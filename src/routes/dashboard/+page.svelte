@@ -1,40 +1,26 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import AppNav from '$lib/components/AppNav.svelte';
   import DashboardHeader from '$lib/components/DashboardHeader.svelte';
   import PlanCard from '$lib/components/PlanCard.svelte';
-  import { samplePlans } from '$lib/data/samplePlans';
-  import { getPlans } from '$lib/api/plans';
-  import type { Plan } from '$lib/types';
-
-  let plans: Plan[] = samplePlans;
-  let statusMessage = '';
-
-  onMount(async () => {
-    try {
-      const response = await getPlans();
-      if (response.success && Array.isArray(response.data)) {
-        plans = response.data;
-      }
-    } catch (error) {
-      statusMessage = 'Using demo data until you connect the backend.';
-    }
-  });
+  const props = $props();
 </script>
 
 <div>
   <AppNav />
   <main class="px-6 lg:px-16 pb-16">
     <div class="section-spacing space-y-6">
-      <DashboardHeader name="Alex" />
-      {#if statusMessage}
+      <DashboardHeader
+        name={props.data.profile?.name ?? 'there'}
+        planCount={props.data.plans.length}
+      />
+      {#if props.data.statusMessage}
         <div class="alert alert-info text-sm">
-          {statusMessage}
+          {props.data.statusMessage}
         </div>
       {/if}
       <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div class="tabs tabs-bordered">
-          <a class="tab tab-active">Hosting (4)</a>
+          <a class="tab tab-active">Hosting ({props.data.plans.length})</a>
           <a class="tab">Invited (2)</a>
           <a class="tab">Past Events</a>
         </div>
@@ -54,7 +40,7 @@
     </div>
 
     <section id="plans" class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-      {#each plans as plan}
+      {#each props.data.plans as plan (plan.id)}
         <PlanCard {plan} />
       {/each}
       <div class="card border-2 border-dashed border-base-200 bg-base-100/60 text-center">

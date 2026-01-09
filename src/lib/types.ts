@@ -30,10 +30,16 @@ export interface Activity {
 
 export interface Plan {
   id: string;
+  invitationId?: string;
   title: string;
   type: PlanType;
   status: string;
   deadline: Date | null;
+  startDay?: Date | null;
+  endDay?: Date | null;
+  country?: string;
+  state?: string;
+  city?: string;
   location: string;
   coverImage: string;
   goal: number;
@@ -56,4 +62,18 @@ export interface ChatMessage {
   message: string;
   timestamp: Date | null;
   isSelf?: boolean;
+}
+
+export interface UserProfile {
+  id?: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  avatar?: string;
+  venmoHandle?: string;
+  location?: string;
+  country?: string;
+  state?: string;
+  city?: string;
 }

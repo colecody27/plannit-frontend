@@ -4,7 +4,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { initTheme } from '$lib/stores/theme';
 
-	let { children } = $props();
+	const props = $props();
 
 	onMount(() => {
 		initTheme();
@@ -18,5 +18,5 @@
 </svelte:head>
 
 <div class="app-shell min-h-screen text-base-content">
-	{@render children()}
+	{@render props.children()}
 </div>

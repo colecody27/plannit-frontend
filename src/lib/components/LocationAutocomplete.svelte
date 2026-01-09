@@ -1,0 +1,228 @@
+<script lang="ts">
+  import { Country, State, City } from 'country-state-city';
+
+  export let label = 'Location';
+  export let location = '';
+  export let country = '';
+  export let state = '';
+  export let city = '';
+  export let idPrefix = 'location';
+
+  const countries = Country.getAllCountries();
+
+  let countryInput = '';
+  let stateInput = '';
+  let cityInput = '';
+  let selectedCountryCode = '';
+  let selectedStateCode = '';
+  let selectedCountryName = '';
+  let selectedStateName = '';
+  let selectedCityName = '';
+  let seededLocation = '';
+  let seededCountry = '';
+  let seededState = '';
+  let seededCity = '';
+
+  const normalize = (value: string) => value.trim().toLowerCase();
+
+  const resolveCountry = (value: string) => {
+    const normalized = normalize(value);
+    const match = countries.find(
+      (country) =>
+        normalize(country.name) === normalized || normalize(country.isoCode) === normalized
+    );
+    if (match) {
+      selectedCountryCode = match.isoCode;
+      selectedCountryName = match.name;
+      return;
+    }
+    selectedCountryCode = '';
+    selectedCountryName = '';
+  };
+
+  const resolveState = (value: string) => {
+    const normalized = normalize(value);
+    const states = State.getStatesOfCountry(selectedCountryCode);
+    const match = states.find(
+      (state) =>
+        normalize(state.name) === normalized || normalize(state.isoCode) === normalized
+    );
+    if (match) {
+      selectedStateCode = match.isoCode;
+      selectedStateName = match.name;
+      return;
+    }
+    selectedStateCode = '';
+    selectedStateName = '';
+  };
+
+  const resolveCity = (value: string) => {
+    const normalized = normalize(value);
+    const cities = City.getCitiesOfState(selectedCountryCode, selectedStateCode);
+    const match = cities.find((city) => normalize(city.name) === normalized);
+    if (match) {
+      selectedCityName = match.name;
+      return;
+    }
+    selectedCityName = '';
+  };
+
+  const handleCountryChange = () => {
+    resolveCountry(countryInput);
+    stateInput = '';
+    cityInput = '';
+    selectedStateCode = '';
+    selectedStateName = '';
+    selectedCityName = '';
+  };
+
+  const handleStateChange = () => {
+    resolveState(stateInput);
+    cityInput = '';
+    selectedCityName = '';
+  };
+
+  const handleCityChange = () => {
+    resolveCity(cityInput);
+  };
+
+  $: states = selectedCountryCode ? State.getStatesOfCountry(selectedCountryCode) : [];
+  $: cities =
+    selectedCountryCode && selectedStateCode
+      ? City.getCitiesOfState(selectedCountryCode, selectedStateCode)
+      : [];
+
+  const applyLocationSeed = (value: string) => {
+    const parts = value
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (!parts.length) {
+      return;
+    }
+
+    const countryName = parts[parts.length - 1];
+    const stateName = parts.length > 1 ? parts[parts.length - 2] : '';
+    const cityName = parts.length > 2 ? parts[0] : '';
+
+    const matchedCountry = countries.find(
+      (country) => normalize(country.name) === normalize(countryName)
+    );
+    if (!matchedCountry) {
+      return;
+    }
+
+    selectedCountryCode = matchedCountry.isoCode;
+    selectedCountryName = matchedCountry.name;
+    countryInput = matchedCountry.name;
+
+    if (stateName) {
+      const states = State.getStatesOfCountry(selectedCountryCode);
+      const matchedState = states.find(
+        (state) => normalize(state.name) === normalize(stateName)
+      );
+      if (matchedState) {
+        selectedStateCode = matchedState.isoCode;
+        selectedStateName = matchedState.name;
+        stateInput = matchedState.name;
+      }
+    }
+
+    if (cityName && selectedStateCode) {
+      const cities = City.getCitiesOfState(selectedCountryCode, selectedStateCode);
+      const matchedCity = cities.find((city) => normalize(city.name) === normalize(cityName));
+      if (matchedCity) {
+        selectedCityName = matchedCity.name;
+        cityInput = matchedCity.name;
+      }
+    }
+  };
+
+  const applyFieldsSeed = () => {
+    if (country && country !== seededCountry) {
+      countryInput = country;
+      resolveCountry(country);
+      seededCountry = country;
+    }
+
+    if (selectedCountryCode && state && state !== seededState) {
+      stateInput = state;
+      resolveState(state);
+      seededState = state;
+    }
+
+    if (selectedCountryCode && selectedStateCode && city && city !== seededCity) {
+      cityInput = city;
+      resolveCity(city);
+      seededCity = city;
+    }
+  };
+
+  $: if (country || state || city) {
+    applyFieldsSeed();
+  } else if (location && location !== seededLocation && !selectedCountryCode) {
+    applyLocationSeed(location);
+    seededLocation = location;
+  }
+
+  $: if (selectedCountryName || selectedStateName || selectedCityName) {
+    country = selectedCountryName;
+    state = selectedStateName;
+    city = selectedCityName;
+    const parts = [selectedCityName, selectedStateName, selectedCountryName].filter(Boolean);
+    location = parts.join(', ');
+  } else if (!country && !state && !city) {
+    location = '';
+  }
+</script>
+
+<label class="form-control">
+  <span class="label-text">{label}</span>
+  <div class="grid gap-3 md:grid-cols-3">
+    <div>
+      <input
+        class="input input-bordered w-full"
+        list={`${idPrefix}-countries`}
+        placeholder="Country"
+        bind:value={countryInput}
+        on:change={handleCountryChange}
+      />
+      <datalist id={`${idPrefix}-countries`}>
+        {#each countries as country}
+          <option value={country.name}></option>
+        {/each}
+      </datalist>
+    </div>
+    <div>
+      <input
+        class="input input-bordered w-full"
+        list={`${idPrefix}-states`}
+        placeholder="State"
+        bind:value={stateInput}
+        on:change={handleStateChange}
+        disabled={!selectedCountryCode}
+      />
+      <datalist id={`${idPrefix}-states`}>
+        {#each states as state}
+          <option value={state.name}></option>
+        {/each}
+      </datalist>
+    </div>
+    <div>
+      <input
+        class="input input-bordered w-full"
+        list={`${idPrefix}-cities`}
+        placeholder="City"
+        bind:value={cityInput}
+        on:change={handleCityChange}
+        disabled={!selectedStateCode}
+      />
+      <datalist id={`${idPrefix}-cities`}>
+        {#each cities as city}
+          <option value={city.name}></option>
+        {/each}
+      </datalist>
+    </div>
+  </div>
+</label>

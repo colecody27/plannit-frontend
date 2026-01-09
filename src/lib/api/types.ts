@@ -36,6 +36,11 @@ export interface ApiPlan {
   activities?: ApiActivity[];
   messages?: ApiMessage[];
   created_at?: string | null;
+  start_day?: string | null;
+  end_day?: string | null;
+  country?: string;
+  state?: string;
+  city?: string;
   theme?: string;
   participant_ids?: unknown[];
   location?: string;
@@ -46,4 +51,19 @@ export interface ApiResponse<T> {
   success: boolean;
   data: T;
   msg?: string;
+}
+
+export interface ApiUserProfile {
+  id?: string;
+  name?: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  country?: string;
+  state?: string;
+  city?: string;
+  picture?: string;
+  avatar?: string;
+  avatar_url?: string;
+  venmo_handle?: string;
 }

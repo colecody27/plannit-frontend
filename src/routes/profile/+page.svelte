@@ -1,6 +1,7 @@
 <script lang="ts">
   import AppNav from '$lib/components/AppNav.svelte';
   import Avatar from '$lib/components/Avatar.svelte';
+  import LocationAutocomplete from '$lib/components/LocationAutocomplete.svelte';
 
   const mutuals = [
     { initials: 'SK', name: 'Sarah' },
@@ -18,7 +19,23 @@
     { label: 'Sign Out', active: false, danger: true }
   ];
 
-  const venmoHandle = '';
+  const props = $props();
+  const venmoHandle = props.data.profile?.venmoHandle ?? '';
+  const displayName = props.data.profile?.name ?? 'Guest';
+  const firstName = props.data.profile?.firstName ?? '';
+  const lastName = props.data.profile?.lastName ?? '';
+  const email = props.data.profile?.email ?? '';
+  const initials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'G';
+  const avatarUrl = props.data.profile?.avatar ?? null;
+  let profileLocation = props.data.profile?.location ?? '';
+  let profileCountry = props.data.profile?.country ?? '';
+  let profileState = props.data.profile?.state ?? '';
+  let profileCity = props.data.profile?.city ?? '';
 </script>
 
 <div>
@@ -38,13 +55,14 @@
             <div class="card-body items-center text-center">
               <div class="w-full rounded-2xl bg-gradient-to-r from-primary/20 to-secondary/20 py-10"></div>
               <Avatar
-                initials="JP"
+                initials={initials}
                 size="xl"
                 status="none"
+                imageUrl={avatarUrl}
                 outerClass="-mt-8"
                 innerClass="bg-base-100 ring-4 ring-base-100"
               />
-              <h3 class="text-lg font-semibold">Jessica Parker</h3>
+              <h3 class="text-lg font-semibold">{displayName}</h3>
               <div class="grid grid-cols-2 gap-4 text-center w-full mt-4">
                 <div>
                   <p class="text-xl font-semibold text-primary">14</p>
@@ -100,15 +118,15 @@
               <div class="grid gap-4 md:grid-cols-2">
                 <label class="form-control">
                   <span class="label-text">First Name</span>
-                  <input class="input input-bordered" value="Jessica" />
+                  <input class="input input-bordered" value={firstName} readonly />
                 </label>
                 <label class="form-control">
                   <span class="label-text">Last Name</span>
-                  <input class="input input-bordered" value="Parker" />
+                  <input class="input input-bordered" value={lastName} readonly />
                 </label>
                 <label class="form-control">
                   <span class="label-text">Email Address</span>
-                  <input class="input input-bordered" value="jessica.parker@example.com" readonly />
+                  <input class="input input-bordered" value={email} readonly />
                 </label>
                 <label class="form-control">
                   <span class="label-text">Phone Number</span>
@@ -130,10 +148,14 @@
                   Phone
                 </label>
               </div>
-              <label class="form-control">
-                <span class="label-text">Location</span>
-                <input class="input input-bordered" value="San Francisco, CA" />
-              </label>
+              <LocationAutocomplete
+                label="Location"
+                bind:location={profileLocation}
+                bind:country={profileCountry}
+                bind:state={profileState}
+                bind:city={profileCity}
+                idPrefix="profile-location"
+              />
               <label class="form-control">
                 <span class="label-text">Bio</span>
                 <textarea class="textarea textarea-bordered h-24">

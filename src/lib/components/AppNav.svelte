@@ -19,6 +19,15 @@
   ];
 
   let avatarClass = avatarStyles[0];
+  $: profile = $page.data?.profile;
+  $: avatarUrl = profile?.avatar ?? null;
+  $: displayName = profile?.name ?? 'Guest';
+  $: initials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'G';
 
   onMount(() => {
     const index = Math.floor(Math.random() * avatarStyles.length);
@@ -53,7 +62,12 @@
     <ThemeToggle />
     <div class="dropdown dropdown-end">
       <label tabindex="0" class="btn btn-ghost btn-circle overflow-visible">
-        <Avatar initials="AC" status="online" innerClass={`ring-2 ${avatarClass}`} />
+        <Avatar
+          initials={initials}
+          status="online"
+          imageUrl={avatarUrl}
+          innerClass={`ring-2 ${avatarClass}`}
+        />
       </label>
       <ul
         tabindex="0"

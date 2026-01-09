@@ -4,12 +4,14 @@
   export let location = 'Joshua Tree, CA';
   export let showFinalize = true;
   export let showInvite = true;
+  export let showMeta = true;
   export let extraActionLabel: string | null = null;
   export let extraActionHref = '#';
   export let extraActionVariant: 'outline' | 'ghost' | 'error' = 'outline';
   export let extraActionClass = '';
   export let extraActionTargetId: string | null = null;
   export let inviteTargetId: string | null = null;
+  export let onInvite: (() => void) | null = null;
 
   $: extraActionVariantClass =
     extraActionVariant === 'error' ? 'btn-error' : `btn-${extraActionVariant}`;
@@ -23,11 +25,13 @@
   <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
     <div>
       <h1 class="text-3xl lg:text-4xl font-semibold">{title}</h1>
-      <div class="flex flex-wrap gap-3 text-sm text-base-content/60 mt-2">
-        <span>{dateRange}</span>
-        <span>-</span>
-        <span>{location}</span>
-      </div>
+      {#if showMeta}
+        <div class="flex flex-wrap gap-3 text-sm text-base-content/60 mt-2">
+          <span>{dateRange}</span>
+          <span>-</span>
+          <span>{location}</span>
+        </div>
+      {/if}
     </div>
     <div class="flex flex-wrap gap-3">
       {#if extraActionLabel}
@@ -46,9 +50,11 @@
       {/if}
       {#if showInvite}
         {#if inviteTargetId}
-          <label class="btn btn-outline" for={inviteTargetId}>Invite Friends</label>
+          <label class="btn btn-outline" for={inviteTargetId} on:click={onInvite ?? undefined}
+            >Invite Friends</label
+          >
         {:else}
-          <button class="btn btn-outline">Invite Friends</button>
+          <button class="btn btn-outline" on:click={onInvite ?? undefined}>Invite Friends</button>
         {/if}
       {/if}
       {#if showFinalize}

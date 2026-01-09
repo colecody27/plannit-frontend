@@ -95,14 +95,23 @@ export const mapPlanFromApi = (plan: ApiPlan, index = 0): Plan => {
   const goal = plan.costs?.total ?? 0;
   const perPerson = plan.costs?.per_person ?? 0;
   const raised = (plan as Record<string, any>)?.costs?.raised ?? Math.round(goal * 0.6);
+  const locationParts = [plan.city, plan.state, plan.country].filter(Boolean);
+  const resolvedLocation =
+    locationParts.length > 0 ? locationParts.join(', ') : plan.location ?? 'Location TBD';
 
   return {
-    id: plan.id ?? plan._id ?? plan.invitation_id ?? `plan-${index}`,
+    id: plan.id ?? `plan-${index}`,
+    invitationId: plan.invitation_id ?? undefined,
     title: plan.name ?? 'Untitled Plan',
     type: normalizePlanType(plan.type),
     status: plan.status ?? 'active',
     deadline: parseDate(plan.deadline),
-    location: plan.location ?? 'Location TBD',
+    startDay: parseDate(plan.start_day),
+    endDay: parseDate(plan.end_day),
+    country: plan.country ?? undefined,
+    state: plan.state ?? undefined,
+    city: plan.city ?? undefined,
+    location: resolvedLocation,
     coverImage: plan.cover_image ?? coverImages[index % coverImages.length],
     goal,
     raised,

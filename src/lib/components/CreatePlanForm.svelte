@@ -1,5 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { createPlan } from '$lib/api/plans';
+  import LocationAutocomplete from '$lib/components/LocationAutocomplete.svelte';
 
   const planTypes = [
     { id: 'trip', label: 'Trip', description: 'Getaways & vacations' },
@@ -9,18 +12,70 @@
 
   let selectedType = 'trip';
   let allowBuyIn = true;
+  let planName = '';
+  let planDescription = '';
+  let planDeadline = '';
+  let startDay = '';
+  let endDay = '';
+  let planLocation = '';
+  let planCountry = '';
+  let planState = '';
+  let planCity = '';
+  let errorMessage = '';
+  let isSubmitting = false;
   export let showBuyIn = false;
 
   onMount(async () => {
     await import('cally');
   });
+
+  const formatDate = (date: Date) => date.toISOString().slice(0, 10);
+
+  const handleRangeStart = (event: CustomEvent<Date>) => {
+    startDay = formatDate(event.detail);
+    endDay = '';
+  };
+
+  const handleRangeEnd = (event: CustomEvent<Date>) => {
+    endDay = formatDate(event.detail);
+  };
+
+  const handleSubmit = async () => {
+    errorMessage = '';
+    const trimmedName = planName.trim();
+    if (!trimmedName) {
+      errorMessage = 'Plan name is required.';
+      return;
+    }
+
+    isSubmitting = true;
+    try {
+      const payloadType = selectedType === 'group' ? 'group_purchase' : selectedType;
+      const response = await createPlan({
+        name: trimmedName,
+        description: planDescription.trim() || undefined,
+        type: payloadType,
+        deadline: planDeadline ? new Date(planDeadline).toISOString() : undefined,
+        start_day: startDay ? new Date(startDay).toISOString() : undefined,
+        end_day: endDay ? new Date(endDay).toISOString() : undefined,
+        location: planLocation || undefined,
+        country: planCountry || undefined,
+        state: planState || undefined,
+        city: planCity || undefined
+      });
+      await goto(`/plans/${response.data.id}/organizer`);
+    } catch (error) {
+      errorMessage = error instanceof Error ? error.message : 'Unable to create plan.';
+    } finally {
+      isSubmitting = false;
+    }
+  };
 </script>
 
-<div class="card bg-base-100 border border-base-200 shadow-sm">
-  <div class="card-body gap-6">
+<div class="card bg-base-100 border border-base-200 shadow-sm max-w-6xl mx-auto">
+  <form class="card-body gap-6" on:submit|preventDefault={handleSubmit}>
     <div class="flex items-center justify-between">
       <h2 class="text-lg font-semibold">1. Plan Type</h2>
-      <button class="text-sm text-primary">Edit</button>
     </div>
     <div class="grid gap-4 md:grid-cols-3">
       {#each planTypes as type}
@@ -43,7 +98,11 @@
       <h2 class="text-lg font-semibold">2. The Details</h2>
       <label class="form-control">
         <span class="label-text">What are we calling this?</span>
-        <input class="input input-bordered" placeholder="Tahoe Ski Trip 2024" />
+        <input
+          class="input input-bordered"
+          placeholder="Tahoe Ski Trip 2024"
+          bind:value={planName}
+        />
       </label>
       <div>
         <span class="label-text">Cover Image</span>
@@ -60,16 +119,57 @@
         <textarea
           class="textarea textarea-bordered h-28"
           placeholder="Add details about the itinerary, what to bring, etc..."
+          bind:value={planDescription}
         ></textarea>
       </label>
+      <LocationAutocomplete
+        label="Location"
+        bind:location={planLocation}
+        bind:country={planCountry}
+        bind:state={planState}
+        bind:city={planCity}
+        idPrefix="plan-location"
+      />
       <label class="form-control">
         <span class="label-text">Dates</span>
         <span class="text-xs text-base-content/60">Pick a start and end date.</span>
-        <div class="mt-3 rounded-2xl border border-base-200 p-3">
-          <calendar-range months="1" page-by="single">
+        <div class="mt-3 rounded-2xl border border-base-200 p-3 flex justify-center">
+          <calendar-range
+            months="1"
+            page-by="single"
+            on:rangestart={handleRangeStart}
+            on:rangeend={handleRangeEnd}
+          >
             <calendar-month></calendar-month>
           </calendar-range>
         </div>
+      </label>
+      <div class="grid gap-3 md:grid-cols-2">
+        <label class="form-control">
+          <span class="label-text">Start day</span>
+          <input
+            class="input input-bordered"
+            type="text"
+            placeholder="Select start day"
+            bind:value={startDay}
+            readonly
+          />
+        </label>
+        <label class="form-control">
+          <span class="label-text">End day</span>
+          <input
+            class="input input-bordered"
+            type="text"
+            placeholder="Select end day"
+            bind:value={endDay}
+            readonly
+          />
+        </label>
+      </div>
+      <label class="form-control">
+        <span class="label-text">Commitment deadline</span>
+        <span class="text-xs text-base-content/60">When do people need to commit by?</span>
+        <input class="input input-bordered" type="date" bind:value={planDeadline} />
       </label>
       {#if showBuyIn}
         <div class="flex items-center justify-between rounded-2xl border border-base-200 p-4">
@@ -82,11 +182,17 @@
       {/if}
     </div>
 
+    {#if errorMessage}
+      <div class="alert alert-error text-sm">
+        {errorMessage}
+      </div>
+    {/if}
+
     <div class="flex items-center justify-between">
       <button class="btn btn-outline">Back</button>
-      <a class="btn btn-primary" href={allowBuyIn ? '/plans/create/stripe' : '/dashboard'}>
-        Continue ->
-      </a>
+      <button class="btn btn-primary" type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Creating...' : 'Create Plan ->'}
+      </button>
     </div>
-  </div>
+  </form>
 </div>

@@ -8,15 +8,25 @@
   import ItineraryTimeline from '$lib/components/ItineraryTimeline.svelte';
   import ParticipantsCard from '$lib/components/ParticipantsCard.svelte';
   import { samplePlanDetail } from '$lib/data/samplePlans';
+  import { page } from '$app/stores';
+  import { apiFetch } from '$lib/api/client';
 
   const planLocked = true;
   const venmoHandle = '@sarah-host';
   const venmoLink = 'https://plannit.app/pay/placeholder';
   let copiedVenmo = false;
+  let addActivityOpen = false;
+  let activityName = '';
+  let activityLink = '';
+  let activityDetails = '';
   let activityCost = '';
+  let activityStartDay = '';
+  let activityEndDay = '';
   let isAllDay = false;
   let activityStartTime = '';
   let activityEndTime = '';
+  let activityError = '';
+  let isActivitySaving = false;
 
   onMount(async () => {
     await import('cally');
@@ -29,6 +39,83 @@
       return;
     }
     activityCost = parsed.toFixed(2);
+  };
+
+  const formatDate = (date: Date) => date.toISOString().slice(0, 10);
+
+  const handleActivityRangeStart = (event: CustomEvent<Date>) => {
+    activityStartDay = formatDate(event.detail);
+    activityEndDay = '';
+  };
+
+  const handleActivityRangeEnd = (event: CustomEvent<Date>) => {
+    activityEndDay = formatDate(event.detail);
+  };
+
+  const buildDateTime = (date: string, time: string) => {
+    if (!date) {
+      return undefined;
+    }
+    const safeTime = time || '00:00';
+    return new Date(`${date}T${safeTime}`).toISOString();
+  };
+
+  const resetActivityForm = () => {
+    activityName = '';
+    activityLink = '';
+    activityDetails = '';
+    activityCost = '';
+    activityStartDay = '';
+    activityEndDay = '';
+    isAllDay = false;
+    activityStartTime = '';
+    activityEndTime = '';
+    activityError = '';
+  };
+
+  const handleSaveActivity = async () => {
+    if (isActivitySaving) {
+      return;
+    }
+    activityError = '';
+
+    const trimmedName = activityName.trim();
+    if (!trimmedName) {
+      activityError = 'Activity name is required.';
+      return;
+    }
+
+    const planId = $page.params.planId;
+    if (!planId) {
+      activityError = 'Plan is unavailable.';
+      return;
+    }
+
+    isActivitySaving = true;
+    try {
+      const startTime = buildDateTime(activityStartDay, isAllDay ? '' : activityStartTime);
+      const endBase = activityEndDay || activityStartDay;
+      const endTime = buildDateTime(endBase, isAllDay ? '' : activityEndTime);
+
+      await apiFetch(`/plan/${planId}/activity/create`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: trimmedName,
+          description: activityDetails.trim() || undefined,
+          link: activityLink.trim() || undefined,
+          cost: activityCost ? Number(activityCost) : undefined,
+          start_time: startTime,
+          end_time: endTime
+        })
+      });
+
+      addActivityOpen = false;
+      resetActivityForm();
+    } catch (error) {
+      activityError = error instanceof Error ? error.message : 'Unable to save activity.';
+    } finally {
+      isActivitySaving = false;
+    }
   };
 
   const copyVenmoHandle = async () => {
@@ -155,23 +242,50 @@
       <label class="modal-backdrop" for="leave-plan-modal">Close</label>
     </div>
 
-    <input id="add-activity-modal" type="checkbox" class="modal-toggle" />
+    <input id="add-activity-modal" type="checkbox" class="modal-toggle" bind:checked={addActivityOpen} />
     <div class="modal" role="dialog">
       <div class="modal-box">
         <h3 class="text-lg font-semibold mb-4">Add Activity</h3>
         <div class="space-y-3">
           <label class="form-control">
             <span class="label-text">Activity name</span>
-            <input class="input input-bordered" placeholder="Arrival & Check-in" />
+            <input class="input input-bordered" placeholder="Arrival & Check-in" bind:value={activityName} />
           </label>
           <label class="form-control">
             <span class="label-text">Timeframe</span>
-            <div class="rounded-2xl border border-base-200 p-3">
-              <calendar-range months="1" page-by="single">
+            <div class="rounded-2xl border border-base-200 p-3 flex justify-center">
+              <calendar-range
+                months="1"
+                page-by="single"
+                on:rangestart={handleActivityRangeStart}
+                on:rangeend={handleActivityRangeEnd}
+              >
                 <calendar-month></calendar-month>
               </calendar-range>
             </div>
           </label>
+          <div class="grid gap-3 md:grid-cols-2">
+            <label class="form-control">
+              <span class="label-text">Start day</span>
+              <input
+                class="input input-bordered"
+                type="text"
+                placeholder="Select start day"
+                bind:value={activityStartDay}
+                readonly
+              />
+            </label>
+            <label class="form-control">
+              <span class="label-text">End day</span>
+              <input
+                class="input input-bordered"
+                type="text"
+                placeholder="Select end day"
+                bind:value={activityEndDay}
+                readonly
+              />
+            </label>
+          </div>
           <div class="flex items-center justify-between rounded-2xl border border-base-200 px-4 py-3 text-sm">
             <div>
               <p class="font-semibold">All-day</p>
@@ -193,7 +307,7 @@
           {/if}
           <label class="form-control">
             <span class="label-text">Link</span>
-            <input class="input input-bordered" placeholder="https://maps.google.com" />
+            <input class="input input-bordered" placeholder="https://maps.google.com" bind:value={activityLink} />
           </label>
           <label class="form-control">
             <span class="label-text">Cost</span>
@@ -215,12 +329,21 @@
           </label>
           <label class="form-control">
             <span class="label-text">Details</span>
-            <textarea class="textarea textarea-bordered h-24" placeholder="Add activity details."></textarea>
+            <textarea
+              class="textarea textarea-bordered h-24"
+              placeholder="Add activity details."
+              bind:value={activityDetails}
+            ></textarea>
           </label>
         </div>
+        {#if activityError}
+          <p class="text-xs text-error mt-3">{activityError}</p>
+        {/if}
         <div class="modal-action">
           <label for="add-activity-modal" class="btn btn-outline">Cancel</label>
-          <label for="add-activity-modal" class="btn btn-primary">Save Activity</label>
+          <button class="btn btn-primary" on:click={handleSaveActivity} disabled={isActivitySaving}>
+            {isActivitySaving ? 'Saving...' : 'Save Activity'}
+          </button>
         </div>
       </div>
       <label class="modal-backdrop" for="add-activity-modal">Close</label>

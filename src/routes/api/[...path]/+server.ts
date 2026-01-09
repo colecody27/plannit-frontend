@@ -8,7 +8,8 @@ const BACKEND_BASE_URL = (PRIVATE_API_BASE_URL || PUBLIC_API_BASE_URL || 'http:/
 const proxyRequest: RequestHandler = async ({ request, url, params, cookies }) => {
   const targetPath = params.path ? `/${params.path}` : '';
   const targetUrl = `${BACKEND_BASE_URL}${targetPath}${url.search}`;
-
+  console.log(`Proxying request to: ${targetUrl}`);
+  
   const headers = new Headers(request.headers);
   headers.delete('host');
   headers.delete('content-length');

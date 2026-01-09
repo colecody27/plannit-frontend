@@ -6,6 +6,25 @@
   export let plan: Plan;
 
   $: progressValue = plan.goal > 0 ? (plan.raised / plan.goal) * 100 : 0;
+  $: displayLocation =
+    plan.city || plan.state
+      ? [plan.city, plan.state].filter(Boolean).join(', ')
+      : plan.location;
+
+  const formatTimeline = (start?: Date | null, end?: Date | null) => {
+    if (start && end) {
+      const startLabel = formatShortDate(start);
+      const endLabel = formatShortDate(end);
+      return startLabel === endLabel ? startLabel : `${startLabel} - ${endLabel}`;
+    }
+    if (start) {
+      return formatShortDate(start);
+    }
+    if (end) {
+      return formatShortDate(end);
+    }
+    return 'Timeline TBD';
+  };
 </script>
 
 <div class="card bg-base-100 border border-base-200 shadow-sm overflow-hidden">
@@ -22,9 +41,37 @@
     <div class="flex items-start justify-between">
       <div>
         <h3 class="text-lg font-semibold">{plan.title}</h3>
-        <div class="text-sm text-base-content/60">
-          <p>{formatShortDate(plan.deadline)}</p>
-          <p>{plan.location}</p>
+        <div class="text-sm text-base-content/60 space-y-1">
+          <div class="flex items-center gap-2">
+            <svg
+              class="h-4 w-4 text-base-content/50"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M6 2a1 1 0 0 1 1 1v1h6V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 1-1Zm10 7H4v6a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9Z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            <span>{formatTimeline(plan.startDay, plan.endDay)}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <svg
+              class="h-4 w-4 text-base-content/50"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M9.69 18.933a1 1 0 0 1-1.38 0C5.425 16.31 3 13.469 3 10.5A7 7 0 1 1 17 10.5c0 2.969-2.425 5.81-5.31 8.433ZM10 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            <span>{displayLocation}</span>
+          </div>
         </div>
       </div>
       <button class="btn btn-ghost btn-xs">...</button>
