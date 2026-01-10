@@ -357,7 +357,7 @@
             <span class="label-text">Timeframe</span>
             <div class="rounded-2xl border border-base-200 p-3 flex justify-center">
               <calendar-range
-                months="1"
+                months={1}
                 page-by="single"
                 on:rangestart={handleActivityRangeStart}
                 on:rangeend={handleActivityRangeEnd}

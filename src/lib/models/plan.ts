@@ -76,11 +76,30 @@ export const mapActivityFromApi = (activity: ApiActivity, index = 0): Activity =
   startTime: parseDate(activity.start_time ?? null),
   endTime: parseDate(activity.end_time ?? null),
   location: (activity as Record<string, any>).location ?? 'Location TBD',
+  image: (activity as Record<string, any>).image ?? undefined,
   description: activity.description ?? undefined,
   link: activity.link ?? undefined,
   cost: activity.cost ?? undefined,
   status: activity.status ?? undefined,
-  options: undefined
+  options: undefined,
+  isProposed: activity.status?.toLowerCase() === 'proposed',
+  hasVoted: Array.isArray(activity.votes) && activity.votes.length > 0,
+  votes: Array.isArray(activity.votes)
+    ? activity.votes
+        .map((vote) => {
+          if (typeof vote === 'string') {
+            return { name: vote };
+          }
+          if (vote && typeof vote === 'object') {
+            const data = vote as Record<string, unknown>;
+            const name = typeof data.name === 'string' ? data.name : 'Guest';
+            const picture = typeof data.picture === 'string' ? data.picture : undefined;
+            return { name, picture };
+          }
+          return null;
+        })
+        .filter((vote): vote is { name: string; picture?: string } => Boolean(vote))
+    : []
 });
 
 export const mapMessageFromApi = (message: ApiMessage, index = 0): ChatMessage => ({

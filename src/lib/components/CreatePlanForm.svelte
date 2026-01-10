@@ -58,7 +58,6 @@
         deadline: planDeadline ? new Date(planDeadline).toISOString() : undefined,
         start_day: startDay ? new Date(startDay).toISOString() : undefined,
         end_day: endDay ? new Date(endDay).toISOString() : undefined,
-        location: planLocation || undefined,
         country: planCountry || undefined,
         state: planState || undefined,
         city: planCity || undefined
@@ -128,6 +127,7 @@
         bind:country={planCountry}
         bind:state={planState}
         bind:city={planCity}
+        singleInput={true}
         idPrefix="plan-location"
       />
       <label class="form-control">
@@ -135,7 +135,7 @@
         <span class="text-xs text-base-content/60">Pick a start and end date.</span>
         <div class="mt-3 rounded-2xl border border-base-200 p-3 flex justify-center">
           <calendar-range
-            months="1"
+            months={1}
             page-by="single"
             on:rangestart={handleRangeStart}
             on:rangeend={handleRangeEnd}

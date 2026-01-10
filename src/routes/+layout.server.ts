@@ -1,11 +1,16 @@
-import type { LayoutLoad } from './$types';
+import type { LayoutServerLoad } from './$types';
 import type { ApiResponse, ApiUserProfile } from '$lib/api/types';
 import type { UserProfile } from '$lib/types';
 import { mapUserProfileFromApi } from '$lib/models/user';
 
 const PROFILE_PATH = '/api/user';
 
-export const load: LayoutLoad = async ({ fetch }) => {
+export const load: LayoutServerLoad = async ({ fetch, cookies }) => {
+  const token = cookies.get('plannit-token');
+  if (!token) {
+    return { profile: null };
+  }
+
   let profile: UserProfile | null = null;
 
   try {

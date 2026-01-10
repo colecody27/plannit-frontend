@@ -32,10 +32,10 @@
     .map((part) => part[0]?.toUpperCase())
     .join('') || 'G';
   const avatarUrl = props.data.profile?.avatar ?? null;
-  let profileLocation = props.data.profile?.location ?? '';
-  let profileCountry = props.data.profile?.country ?? '';
-  let profileState = props.data.profile?.state ?? '';
-  let profileCity = props.data.profile?.city ?? '';
+  let profileLocation = $state(props.data.profile?.location ?? '');
+  let profileCountry = $state(props.data.profile?.country ?? '');
+  let profileState = $state(props.data.profile?.state ?? '');
+  let profileCity = $state(props.data.profile?.city ?? '');
 </script>
 
 <div>

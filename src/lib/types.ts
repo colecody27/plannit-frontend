@@ -26,6 +26,15 @@ export interface Activity {
   cost?: number;
   status?: string;
   options?: ActivityOption[];
+  image?: string;
+  isProposed?: boolean;
+  hasVoted?: boolean;
+  votes?: ActivityVote[];
+}
+
+export interface ActivityVote {
+  name: string;
+  picture?: string;
 }
 
 export interface Plan {
