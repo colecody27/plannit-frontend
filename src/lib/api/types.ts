@@ -13,6 +13,11 @@ export interface ApiActivity {
   start_time?: string | null;
   end_time?: string | null;
   proposer_id?: string;
+  proposer_name?: string;
+  proposer?: string | {
+    id?: string;
+    name?: string;
+  };
   status?: string;
   votes?: unknown[];
 }

@@ -5,6 +5,7 @@
   import { apiFetch } from '$lib/api/client';
   import { page } from '$app/stores';
   import { invalidate } from '$app/navigation';
+  import LocationAutocomplete from '$lib/components/LocationAutocomplete.svelte';
 
   const props = $props();
 
@@ -12,6 +13,18 @@
   let activityModalOpen = $state(false);
   let selectedActivity = $state<Activity | null>(null);
   let isVoteSubmitting = $state(false);
+  let editActivity = $state(false);
+  let isActivitySaving = $state(false);
+  let activitySaveError = $state('');
+  let activityTitle = $state('');
+  let activityLocation = $state('');
+  let activityDescription = $state('');
+  let activityLink = $state('');
+  let activityCost = $state('');
+  let activityStartDate = $state('');
+  let activityEndDate = $state('');
+  let activityStartTime = $state('');
+  let activityEndTime = $state('');
 
   const getRange = (activity: Activity) => {
     const start = activity.startTime ?? null;
@@ -69,6 +82,9 @@
     > = [];
 
     for (const activity of sortedActivities) {
+      if (activity.status?.toLowerCase() === 'rejected') {
+        continue;
+      }
       if (!activity.isProposed) {
         groups.push({ type: 'single', activity });
         continue;
@@ -126,6 +142,8 @@
   const closeActivityModal = () => {
     activityModalOpen = false;
     selectedActivity = null;
+    editActivity = false;
+    activitySaveError = '';
   };
 
   const buildMapsLink = (value?: string | null) => {
@@ -134,6 +152,15 @@
       return null;
     }
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+  };
+
+  const formatCostInput = () => {
+    const parsed = Number(activityCost);
+    if (Number.isNaN(parsed)) {
+      activityCost = '';
+      return;
+    }
+    activityCost = parsed.toFixed(2);
   };
 
   const toggleVote = async (activity: Activity) => {
@@ -165,6 +192,183 @@
       isVoteSubmitting = false;
     }
   };
+
+  const formatDateInput = (value?: Date | null) => {
+    if (!value) {
+      return '';
+    }
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatTimeInput = (value?: Date | null) => {
+    if (!value) {
+      return '';
+    }
+    const hours = String(value.getHours()).padStart(2, '0');
+    const minutes = String(value.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  const buildDateTime = (date: string, time: string) => {
+    if (!date) {
+      return undefined;
+    }
+    const safeTime = time || '00:00';
+    return new Date(`${date}T${safeTime}`).toISOString();
+  };
+
+  $effect(() => {
+    if (!selectedActivity) {
+      return;
+    }
+    activityTitle = selectedActivity.title ?? '';
+    activityLocation = selectedActivity.location ?? '';
+    activityDescription = selectedActivity.description ?? '';
+    activityLink = selectedActivity.link ?? '';
+    activityCost =
+      typeof selectedActivity.cost === 'number' ? selectedActivity.cost.toFixed(2) : '';
+    activityStartDate = formatDateInput(selectedActivity.startTime);
+    activityEndDate = formatDateInput(selectedActivity.endTime ?? null);
+    activityStartTime = formatTimeInput(selectedActivity.startTime);
+    activityEndTime = formatTimeInput(selectedActivity.endTime ?? null);
+    editActivity = false;
+    activitySaveError = '';
+  });
+
+  const isProposer = $derived(
+    Boolean(
+      selectedActivity?.isProposed &&
+        selectedActivity?.proposerId &&
+        $page.data?.profile?.id &&
+        selectedActivity.proposerId === $page.data.profile.id
+    )
+  );
+
+  const saveActivity = async () => {
+    if (!selectedActivity || isActivitySaving) {
+      return;
+    }
+    activitySaveError = '';
+    const planId = $page.params.planId;
+    if (!planId) {
+      activitySaveError = 'Plan is unavailable.';
+      return;
+    }
+
+    const updates: Record<string, unknown> = {};
+    const trimmedTitle = activityTitle.trim();
+    if (trimmedTitle && trimmedTitle !== selectedActivity.title) {
+      updates.name = trimmedTitle;
+    }
+    const trimmedLocation = activityLocation.trim();
+    if (trimmedLocation && trimmedLocation !== selectedActivity.location) {
+      updates.location = trimmedLocation;
+    }
+    const trimmedDescription = activityDescription.trim();
+    if (trimmedDescription !== (selectedActivity.description ?? '')) {
+      updates.description = trimmedDescription || undefined;
+    }
+    const trimmedLink = activityLink.trim();
+    if (trimmedLink !== (selectedActivity.link ?? '')) {
+      updates.link = trimmedLink || undefined;
+    }
+    if (activityCost.trim() !== '') {
+      const parsedCost = Number(activityCost);
+      if (!Number.isNaN(parsedCost) && parsedCost !== (selectedActivity.cost ?? 0)) {
+        updates.cost = parsedCost;
+      }
+    } else if (selectedActivity.cost !== undefined) {
+      updates.cost = undefined;
+    }
+
+    const startDate = activityStartDate || formatDateInput(selectedActivity.startTime);
+    const endDate = activityEndDate || formatDateInput(selectedActivity.endTime ?? null);
+    const startTime = activityStartTime || formatTimeInput(selectedActivity.startTime);
+    const endTime = activityEndTime || formatTimeInput(selectedActivity.endTime ?? null);
+
+    const nextStart = buildDateTime(startDate, startTime);
+    const nextEnd = endDate ? buildDateTime(endDate, endTime) : undefined;
+
+    if (nextStart !== selectedActivity.startTime?.toISOString()) {
+      updates.start_time = nextStart;
+    }
+    if (nextEnd !== selectedActivity.endTime?.toISOString()) {
+      updates.end_time = nextEnd;
+    }
+
+    if (!Object.keys(updates).length) {
+      editActivity = false;
+      return;
+    }
+
+    isActivitySaving = true;
+    try {
+      const response = await apiFetch<ApiResponse<ApiActivity> | Activity>(
+        `/plan/${planId}/activity/${selectedActivity.id}`,
+        { method: 'PUT', body: JSON.stringify(updates) }
+      );
+      const updatedActivity = isApiResponse(response)
+        ? mapActivityFromApi(response.data, 0)
+        : isActivity(response)
+          ? response
+          : null;
+      if (updatedActivity) {
+        updateActivity(updatedActivity);
+      }
+      await invalidate(`/api/plan/${planId}`);
+      editActivity = false;
+    } catch (error) {
+      activitySaveError = error instanceof Error ? error.message : 'Unable to save activity.';
+    } finally {
+      isActivitySaving = false;
+    }
+  };
+
+  const formatModalDateTime = (start?: Date | null, end?: Date | null) => {
+    if (!start) {
+      return { start: 'Timeline TBD', end: null, isRange: false };
+    }
+    const startDate = start.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric'
+    });
+    const startTime = start.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    if (!end) {
+      return { start: `${startDate} · ${startTime}`, end: null, isRange: false };
+    }
+    const endDate = end.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric'
+    });
+    const endTime = end.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    if (startDate === endDate) {
+      return {
+        start: `${startDate} · ${formatTimeRange(start, end) ?? startTime}`,
+        end: null,
+        isRange: false
+      };
+    }
+    return {
+      start: `${startDate} ${startTime}`,
+      end: `${endDate} ${endTime}`,
+      isRange: true
+    };
+  };
+
+  let modalTime = $derived(
+    formatModalDateTime(selectedActivity?.startTime ?? null, selectedActivity?.endTime ?? null)
+  );
 </script>
 
 <div class="space-y-5">
@@ -229,7 +433,7 @@
                   <p class="text-lg font-semibold">Voting Open</p>
                   <p class="text-sm text-base-content/60">Vote for your preference</p>
                 </div>
-                <span class="badge badge-outline text-primary">Proposed</span>
+                <span class="badge badge-outline text-warning">Proposed</span>
               </div>
               <div class="space-y-3">
                 {#each group.activities as activity}
@@ -257,9 +461,14 @@
                       <div>
                         <p class="text-base font-semibold">{activity.title}</p>
                         <p class="text-sm text-base-content/60">{activity.location}</p>
+                        {#if activity.isProposed}
+                          <p class="text-xs text-base-content/50">
+                            Proposed by {activity.proposerName ?? 'Guest'}
+                          </p>
+                        {/if}
                       </div>
                     </button>
-                    <div class="ml-auto flex items-center gap-2">
+                    <div class="flex items-center gap-3">
                       <button
                         class={`btn btn-sm ${
                           activity.hasVoted
@@ -272,6 +481,28 @@
                       >
                         {activity.hasVoted ? "I'm out" : "I'm in"}
                       </button>
+                      <div class="flex items-center">
+                        <div class="flex -space-x-3">
+                          {#each (activity.votes ?? []).slice(0, 3) as voter}
+                            {#if voter.picture}
+                              <img
+                                class="h-10 w-10 rounded-full border border-base-100 object-cover"
+                                src={voter.picture}
+                                alt={voter.name}
+                              />
+                            {:else}
+                              <div class="h-10 w-10 rounded-full border border-base-100 bg-base-100 text-[0.6rem] font-semibold flex items-center justify-center">
+                                {voter.name.slice(0, 1).toUpperCase()}
+                              </div>
+                            {/if}
+                          {/each}
+                          {#if (activity.votes?.length ?? 0) > 3}
+                            <div class="h-10 w-10 rounded-full border border-base-100 bg-base-100 text-[0.6rem] font-semibold flex items-center justify-center">
+                              +{(activity.votes?.length ?? 0) - 3}
+                            </div>
+                          {/if}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 {/each}
@@ -293,21 +524,53 @@
                   />
                 </div>
                 <div class="flex-1 space-y-2">
-                  <div class="flex flex-wrap items-start justify-between gap-2">
+                  <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
                       <h4 class="text-base font-semibold">{group.activity.title}</h4>
                       <p class="text-sm text-base-content/60">{group.activity.location}</p>
                     </div>
-                    {#if group.activity.status}
-                      <div class="flex flex-col items-end">
-                        <span class="badge badge-outline text-primary">{group.activity.status}</span>
-                      </div>
-                    {/if}
+                    <div class="flex items-center gap-3">
+                      {#if group.activity.status}
+                        <div class="flex flex-col items-end">
+                          <span
+                            class={`badge badge-outline ${
+                              group.activity.status.toLowerCase() === 'proposed'
+                                ? 'text-warning'
+                                : 'text-primary'
+                            }`}
+                          >
+                            {group.activity.status}
+                          </span>
+                        </div>
+                      {/if}
+                    </div>
                   </div>
-                  <div class="flex flex-wrap items-center gap-3 text-xs text-base-content/70">
+                    <div class="flex flex-wrap items-center gap-3 text-xs text-base-content/70">
                     {#if group.activity.cost !== undefined}
                       <span class="badge badge-outline">${group.activity.cost}</span>
                     {/if}
+                    <div class="ml-auto flex items-center">
+                      <div class="flex -space-x-3">
+                        {#each (group.activity.votes ?? []).slice(0, 3) as voter}
+                          {#if voter.picture}
+                            <img
+                              class="h-10 w-10 rounded-full border border-base-100 object-cover"
+                              src={voter.picture}
+                              alt={voter.name}
+                            />
+                          {:else}
+                            <div class="h-10 w-10 rounded-full border border-base-100 bg-base-100 text-[0.55rem] font-semibold flex items-center justify-center">
+                              {voter.name.slice(0, 1).toUpperCase()}
+                            </div>
+                          {/if}
+                        {/each}
+                        {#if (group.activity.votes?.length ?? 0) > 3}
+                          <div class="h-10 w-10 rounded-full border border-base-100 bg-base-100 text-[0.55rem] font-semibold flex items-center justify-center">
+                            +{(group.activity.votes?.length ?? 0) - 3}
+                          </div>
+                        {/if}
+                      </div>
+                    </div>
                     {#if group.activity.isProposed}
                       <button
                         class={`btn btn-xs ml-auto ${
@@ -371,11 +634,55 @@
     </div>
     <div class="p-6 space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <h3 class="text-2xl font-semibold">{selectedActivity?.title ?? 'Activity'}</h3>
-        {#if selectedActivity?.cost !== undefined}
+        <div class="flex-1">
+          {#if editActivity}
+            <label class="form-control">
+              <span class="label-text font-semibold">Name</span>
+              <input class="input input-bordered w-full" bind:value={activityTitle} />
+            </label>
+          {:else}
+            <h3 class="text-2xl font-semibold">{selectedActivity?.title ?? 'Activity'}</h3>
+          {/if}
+        </div>
+        {#if editActivity}
+          <label class="form-control">
+            <span class="label-text font-semibold">Cost</span>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-base-content/60">
+                $
+              </span>
+              <input
+                class="input input-bordered w-full pl-7"
+                inputmode="decimal"
+                placeholder="25.00"
+                bind:value={activityCost}
+                on:blur={formatCostInput}
+              />
+            </div>
+          </label>
+        {:else if selectedActivity?.cost !== undefined}
           <span class="badge badge-success">Est. ${selectedActivity.cost} / person</span>
         {/if}
+        {#if selectedActivity?.isProposed && isProposer}
+          <button
+            class={`btn ${editActivity ? 'btn-primary' : 'btn-outline'}`}
+            type="button"
+            on:click={() => {
+              if (editActivity) {
+                saveActivity();
+              } else {
+                editActivity = true;
+              }
+            }}
+            disabled={isActivitySaving}
+          >
+            {editActivity ? (isActivitySaving ? 'Saving...' : 'Save') : 'Edit'}
+          </button>
+        {/if}
       </div>
+      {#if activitySaveError}
+        <div class="alert alert-error text-sm">{activitySaveError}</div>
+      {/if}
       <div class="grid gap-4 text-sm text-base-content/70 md:grid-cols-2">
         <div class="flex items-start gap-2">
           <svg class="mt-0.5 h-4 w-4 text-base-content/50" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -386,22 +693,50 @@
             />
           </svg>
           <div>
-            <p class="font-semibold text-base-content">
-              {selectedActivity?.startTime
-                ? selectedActivity.startTime.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    month: 'short',
-                    day: 'numeric'
-                  })
-                : 'Timeline TBD'}
-            </p>
-            <p class="text-xs text-base-content/60">
-              {formatTimeRange(selectedActivity?.startTime ?? null, selectedActivity?.endTime ?? null) ??
-                'Time TBD'}
-            </p>
+            {#if editActivity}
+              <div class="space-y-3">
+                <div class="grid gap-3 md:grid-cols-2">
+                  <label class="form-control">
+                    <span class="label-text font-semibold">Start date</span>
+                    <input class="input input-bordered" type="date" bind:value={activityStartDate} />
+                  </label>
+                  <label class="form-control">
+                    <span class="label-text font-semibold">Start time</span>
+                    <input class="input input-bordered" type="time" bind:value={activityStartTime} />
+                  </label>
+                </div>
+                <div class="grid gap-3 md:grid-cols-2">
+                  <label class="form-control">
+                    <span class="label-text font-semibold">End date</span>
+                    <input class="input input-bordered" type="date" bind:value={activityEndDate} />
+                  </label>
+                  <label class="form-control">
+                    <span class="label-text font-semibold">End time</span>
+                    <input class="input input-bordered" type="time" bind:value={activityEndTime} />
+                  </label>
+                </div>
+              </div>
+            {:else if modalTime.isRange && modalTime.end}
+              <div class="space-y-3 text-base-content">
+                <p class="font-semibold text-base-content">When</p>
+                <div>
+                  <p class="text-xs font-semibold text-base-content/60">Starts</p>
+                  <p class="font-semibold">{modalTime.start}</p>
+                </div>
+                <div>
+                  <p class="text-xs font-semibold text-base-content/60">Ends</p>
+                  <p class="font-semibold">{modalTime.end}</p>
+                </div>
+              </div>
+            {:else}
+              <div>
+                <p class="font-semibold text-base-content">When</p>
+                <p class="font-semibold text-base-content">{modalTime.start}</p>
+              </div>
+            {/if}
           </div>
         </div>
-        <div class="flex items-start gap-2">
+        <div class="grid grid-cols-[1rem,1fr] items-start gap-x-2 gap-y-4">
           <svg class="mt-0.5 h-4 w-4 text-base-content/50" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
             <path
               fill-rule="evenodd"
@@ -411,15 +746,53 @@
           </svg>
           <div>
             <p class="font-semibold text-base-content">Where</p>
-            <p class="text-xs text-base-content/60">{selectedActivity?.location ?? 'Location TBD'}</p>
+            {#if editActivity}
+              <LocationAutocomplete
+                label="Location"
+                bind:location={activityLocation}
+                singleInput={true}
+                idPrefix="activity-edit-location"
+              />
+            {:else}
+              <p class="text-xs text-base-content/60">{selectedActivity?.location ?? 'Location TBD'}</p>
+            {/if}
+          </div>
+          <svg class="mt-0.5 h-4 w-4 text-base-content/50" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M12.586 4.586a2 2 0 0 1 2.828 2.828l-4.5 4.5a2 2 0 0 1-2.828 0 1 1 0 1 1 1.414-1.414 0 0 0 0 0 1 1 0 0 0 1.414 0l4.5-4.5a1 1 0 1 0-1.414-1.414l-1.5 1.5a1 1 0 0 1-1.414-1.414l1.5-1.5Z" />
+            <path d="M7.414 15.414a2 2 0 0 1-2.828-2.828l4.5-4.5a2 2 0 0 1 2.828 0 1 1 0 1 1-1.414 1.414 0 0 0 0 0 1 1 0 0 0-1.414 0l-4.5 4.5a1 1 0 1 0 1.414 1.414l1.5-1.5a1 1 0 1 1 1.414 1.414l-1.5 1.5Z" />
+          </svg>
+          <div>
+            <p class="font-semibold text-base-content">Link</p>
+            {#if editActivity}
+                <input
+                  class="input input-bordered mt-2 w-full font-semibold"
+                  placeholder="https://maps.google.com"
+                  bind:value={activityLink}
+                />
+            {:else if selectedActivity?.link}
+              <a
+                class="mt-2 inline-flex items-center gap-2 text-sm text-primary"
+                href={selectedActivity.link}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {selectedActivity.link}
+              </a>
+            {:else}
+              <p class="text-xs text-base-content/60 mt-2">No link provided.</p>
+            {/if}
           </div>
         </div>
       </div>
-      <div>
-        <p class="text-xs uppercase tracking-wide text-base-content/40">Activity Details</p>
-        <p class="text-sm text-base-content/70 mt-2">
-          {selectedActivity?.description ?? 'Details will appear here once added.'}
-        </p>
+      <div class="md:col-span-2">
+        <p class="font-semibold text-base-content">Activity details</p>
+        {#if editActivity}
+          <textarea class="textarea textarea-bordered h-24 mt-2 w-full" bind:value={activityDescription}></textarea>
+        {:else}
+          <p class="text-sm text-base-content/70 mt-2">
+            {selectedActivity?.description ?? 'Details will appear here once added.'}
+          </p>
+        {/if}
       </div>
     </div>
     <div class="border-t border-base-200 p-5 space-y-4">

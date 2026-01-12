@@ -31,6 +31,7 @@ export interface Activity {
   hasVoted?: boolean;
   votes?: ActivityVote[];
   proposerId?: string;
+  proposerName?: string;
 }
 
 export interface ActivityVote {

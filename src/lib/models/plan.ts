@@ -62,7 +62,12 @@ export const formatActivityTime = (value?: Date | null): string => {
 
 export const formatTimeRange = (start?: Date | null, end?: Date | null): string | null => {
   if (start && end) {
-    return `${formatTime(start)} - ${formatTime(end)}`;
+    const startLabel = formatTime(start);
+    const endLabel = formatTime(end);
+    if (startLabel === endLabel) {
+      return startLabel;
+    }
+    return `${startLabel} - ${endLabel}`;
   }
   if (start) {
     return formatTime(start);
@@ -80,11 +85,22 @@ export const mapActivityFromApi = (activity: ApiActivity, index = 0): Activity =
   description: activity.description ?? undefined,
   link: activity.link ?? undefined,
   cost: activity.cost ?? undefined,
-  status: activity.status ?? undefined,
+  status:
+    activity.status?.toLowerCase() === 'accepted'
+      ? 'Confirmed'
+      : activity.status ?? undefined,
   options: undefined,
   isProposed: activity.status?.toLowerCase() === 'proposed',
   hasVoted: Array.isArray(activity.votes) && activity.votes.length > 0,
-  proposerId: (activity as Record<string, any>).proposer_id ?? undefined,
+  proposerId:
+    (activity as Record<string, any>).proposer?.id ??
+    (activity as Record<string, any>).proposer_id ??
+    undefined,
+  proposerName:
+    (activity as Record<string, any>).proposer?.name ??
+    (activity as Record<string, any>).proposer_name ??
+    (activity as Record<string, any>).proposer ??
+    undefined,
   votes: Array.isArray(activity.votes)
     ? activity.votes
         .map((vote) => {

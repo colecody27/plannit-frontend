@@ -8,6 +8,10 @@
   color-scheme: light;
 }
 
+html[data-theme='plannit-dark'] {
+  color-scheme: dark;
+}
+
 body {
   font-family: 'Manrope', sans-serif;
   background: linear-gradient(180deg, rgba(247, 252, 249, 0.95) 0%, rgba(237, 246, 241, 0.85) 100%);
@@ -132,4 +136,50 @@ calendar-range::part(range-end),
 calendar-range::part(range-inner) {
   background: hsl(var(--su)) !important;
   color: hsl(var(--suc)) !important;
+}
+
+html[data-theme='plannit-dark'] input[type='date'],
+html[data-theme='plannit-dark'] input[type='time'] {
+  color-scheme: dark;
+  accent-color: #22c55e;
+}
+
+html[data-theme='plannit-dark'] input[type='date']::-webkit-calendar-picker-indicator,
+html[data-theme='plannit-dark'] input[type='time']::-webkit-calendar-picker-indicator {
+  filter: invert(1) sepia(1) saturate(6) hue-rotate(95deg) brightness(1.1);
+  opacity: 0;
+}
+
+@supports (-webkit-appearance: none) {
+  html[data-theme='plannit-dark'] input[type='date'],
+  html[data-theme='plannit-dark'] input[type='time'] {
+    appearance: none;
+    -webkit-appearance: none;
+    background-repeat: no-repeat;
+    background-position: right 0.25rem center;
+    background-size: 1rem;
+    padding-right: 1.75rem;
+  }
+
+  html[data-theme='plannit-dark'] input[type='date']::-webkit-calendar-picker-indicator,
+  html[data-theme='plannit-dark'] input[type='time']::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    margin: 0;
+  }
+
+  html[data-theme='plannit-dark'] input[type='date'] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2322c55e'%3E%3Cpath d='M6 2a1 1 0 0 1 1 1v1h6V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 1-1Zm10 7H4v6a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9Z'/%3E%3C/svg%3E");
+  }
+
+  html[data-theme='plannit-dark'] input[type='time'] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2322c55e'%3E%3Cpath d='M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm1-8.414V5a1 1 0 1 0-2 0v5a1 1 0 0 0 .293.707l3 3a1 1 0 0 0 1.414-1.414L11 9.586Z'/%3E%3C/svg%3E");
+  }
+}
+
+input[type='date'],
+input[type='time'] {
+  min-width: 0;
+  text-overflow: ellipsis;
 }

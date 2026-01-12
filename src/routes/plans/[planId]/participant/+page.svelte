@@ -18,6 +18,7 @@
   let copiedVenmo = false;
   let addActivityOpen = false;
   let activityName = '';
+  let activityLocation = '';
   let activityLink = '';
   let activityDetails = '';
   let activityCost = '';
@@ -102,12 +103,13 @@
     if (!date) {
       return undefined;
     }
-    const safeTime = time || '00:00';
+    const safeTime = time || '09:00';
     return new Date(`${date}T${safeTime}`).toISOString();
   };
 
   const resetActivityForm = () => {
     activityName = '';
+    activityLocation = '';
     activityLink = '';
     activityDetails = '';
     activityCost = '';
@@ -151,14 +153,21 @@
 
     isActivitySaving = true;
     try {
-      const startTime = buildDateTime(activityStartDay, isAllDay ? '' : activityStartTime);
+      const startTime = buildDateTime(
+        activityStartDay,
+        isAllDay ? '00:00' : activityStartTime
+      );
       const endBase = activityEndDay || activityStartDay;
-      const endTime = buildDateTime(endBase, isAllDay ? '' : activityEndTime);
+      const endTime = buildDateTime(
+        endBase,
+        isAllDay ? '23:59' : activityEndTime || '17:00'
+      );
 
-      await apiFetch(`/plan/${planId}/activity/create`, {
-        method: 'PUT',
+      await apiFetch(`/plan/${planId}/activity`, {
+        method: 'POST',
         body: JSON.stringify({
           name: trimmedName,
+          location: activityLocation.trim() || undefined,
           description: activityDetails.trim() || undefined,
           link: activityLink.trim() || undefined,
           cost: activityCost ? Number(activityCost) : undefined,
@@ -373,6 +382,12 @@
               </label>
             </div>
           {/if}
+          <LocationAutocomplete
+            label="Location"
+            bind:location={activityLocation}
+            singleInput={true}
+            idPrefix="activity-location"
+          />
           <label class="form-control">
             <span class="label-text">Link</span>
             <input class="input input-bordered" placeholder="https://maps.google.com" bind:value={activityLink} />
