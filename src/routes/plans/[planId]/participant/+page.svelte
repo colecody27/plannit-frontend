@@ -96,7 +96,17 @@
   };
 
   const handleActivityRangeEnd = (event: CustomEvent<Date>) => {
-    activityEndDay = formatDate(normalizeCalendarDate(event.detail));
+    const selectedEnd = startOfDay(normalizeCalendarDate(event.detail));
+    if (activityStartDay) {
+      const parsedStart = parseLocalDate(activityStartDay);
+      const selectedStart = parsedStart ? startOfDay(parsedStart) : null;
+      if (selectedStart && selectedEnd < selectedStart) {
+        activityDateError = 'End date cannot be before the start date.';
+        return;
+      }
+    }
+    activityDateError = '';
+    activityEndDay = formatDate(selectedEnd);
   };
 
   const buildDateTime = (date: string, time: string) => {
@@ -147,6 +157,16 @@
       const selected = parsed ? startOfDay(parsed) : null;
       if (selected && selected < today) {
         activityDateError = 'Start date cannot be in the past.';
+        return;
+      }
+    }
+    if (activityStartDay && activityEndDay) {
+      const parsedStart = parseLocalDate(activityStartDay);
+      const parsedEnd = parseLocalDate(activityEndDay);
+      const selectedStart = parsedStart ? startOfDay(parsedStart) : null;
+      const selectedEnd = parsedEnd ? startOfDay(parsedEnd) : null;
+      if (selectedStart && selectedEnd && selectedStart > selectedEnd) {
+        activityDateError = 'End date cannot be before the start date.';
         return;
       }
     }

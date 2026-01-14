@@ -48,6 +48,12 @@ export interface ApiPlan {
   city?: string;
   theme?: string;
   participant_ids?: unknown[];
+  participants?: unknown[];
+  organizer?: {
+    id?: string;
+    name?: string;
+    picture?: string;
+  };
   location?: string;
   cover_image?: string;
 }

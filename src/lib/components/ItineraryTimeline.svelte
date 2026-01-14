@@ -406,40 +406,69 @@
   );
 </script>
 
-<div class="space-y-5">
-  <div class="flex items-center justify-between">
-    <h3 class="text-lg font-semibold">Itinerary</h3>
-    {#if props.addTargetId}
-      <label
-        class={`btn btn-sm ${props.emphasizeAdd ? 'btn-primary' : 'btn-ghost text-primary'}`}
-        for={props.addTargetId}
-      >
-        + Add Activity
-      </label>
-    {:else}
-      <button class={`btn btn-sm ${props.emphasizeAdd ? 'btn-primary' : 'btn-ghost text-primary'}`}>
-        + Add Activity
-      </button>
-    {/if}
-  </div>
+<div class="card bg-base-100 border border-base-200 shadow-sm">
+  <div class="card-body space-y-5">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M6 2a1 1 0 0 1 1 1v1h6V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v1H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 1-1Z" />
+            <path d="M2 9h16v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9Z" />
+          </svg>
+        </span>
+        <h3 class="text-lg font-semibold">Plan Timeline</h3>
+      </div>
+      {#if props.addTargetId}
+        <label
+          class={`btn btn-sm ${props.emphasizeAdd ? 'btn-primary' : 'btn-ghost text-primary'}`}
+          for={props.addTargetId}
+        >
+          + Add Activity
+        </label>
+      {:else}
+        <button class={`btn btn-sm ${props.emphasizeAdd ? 'btn-primary' : 'btn-ghost text-primary'}`}>
+          + Add Activity
+        </button>
+      {/if}
+    </div>
 
-  <div class="max-h-[520px] space-y-5 overflow-y-auto pr-2">
-    {#each groupedActivities as group}
-      <div class="flex gap-4">
-        <div class="flex flex-col items-center gap-2 pt-2">
-          <div
-            class={`h-4 w-4 rounded-full border-2 border-primary ${
-              group.type === 'group'
-                ? 'bg-transparent'
-                : group.activity.isProposed
-                  ? 'bg-transparent'
-                  : 'bg-primary'
-            }`}
-          ></div>
-          <div class="flex-1 w-px bg-base-200"></div>
+    <div class="max-h-[520px] space-y-5 overflow-y-auto pr-2">
+      {#if groupedActivities.length === 0}
+        <div class="card border-2 border-dashed border-base-200 bg-base-100/60 text-center">
+          <div class="card-body items-center justify-center gap-2">
+            <div class="h-12 w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl">+</div>
+            <h3 class="font-semibold">No activities yet</h3>
+            <p class="text-sm text-base-content/60">Start building your itinerary with the first activity.</p>
+            {#if props.addTargetId}
+              <label class="btn btn-ghost text-primary" for={props.addTargetId}>
+                Add Activity
+              </label>
+            {:else}
+              <button class="btn btn-ghost text-primary" type="button">Add Activity</button>
+            {/if}
+          </div>
         </div>
-        <div class="flex-1">
-          <div class="mb-2 text-sm font-semibold text-base-content">
+      {/if}
+      {#if groupedActivities.length}
+        <ul class="timeline timeline-vertical timeline-compact">
+          {#each groupedActivities as group, index}
+            <li>
+              {#if index > 0}
+                <hr class="bg-primary/40" />
+              {/if}
+              <div class="timeline-middle">
+                <div
+                  class={`h-4 w-4 rounded-full border-2 border-primary shadow-[0_0_12px_rgba(23,230,142,0.55)] ${
+                    group.type === 'group'
+                      ? 'bg-transparent'
+                      : group.activity.isProposed
+                        ? 'bg-transparent'
+                        : 'bg-primary'
+                  }`}
+                ></div>
+              </div>
+              <div class="timeline-start w-full pb-4">
+                <div class="mb-2 text-sm font-semibold text-base-content">
             {group.type === 'group'
               ? group.start
                 ? `${group.start.toLocaleDateString('en-US', {
@@ -458,195 +487,201 @@
                     minute: '2-digit'
                   })}`
                 : 'Timeline TBD'}
-          </div>
-
-          {#if group.type === 'group'}
-            {@const totals = getGroupTotals(group.activities)}
-            <div class="rounded-2xl border border-base-200 bg-base-100 p-5 shadow-sm space-y-4">
-              <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p class="text-lg font-semibold">Voting Open</p>
-                  <p class="text-sm text-base-content/60">Vote for your preference</p>
                 </div>
-                <span class="badge badge-outline text-warning">Proposed</span>
-              </div>
-              <div class="space-y-3">
-                {#each group.activities as activity}
-                  {@const votes = activity.votes?.length ?? 0}
-                  <div
-                    class={`flex w-full flex-col gap-3 rounded-2xl border p-3 text-left shadow-sm transition md:flex-row md:items-center ${getProposalClasses(
-                      votes,
-                      totals.total,
-                      totals.max
-                    )}`}
+
+                {#if group.type === 'group'}
+                  {@const totals = getGroupTotals(group.activities)}
+                  <div class="rounded-2xl border border-base-200 bg-base-100 p-5 shadow-sm space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p class="text-lg font-semibold">Voting Open</p>
+                        <p class="text-sm text-base-content/60">Vote for your preference</p>
+                      </div>
+                      <span class="badge badge-outline text-warning">Proposed</span>
+                    </div>
+                    <div class="space-y-3">
+                      {#each group.activities as activity}
+                        {@const votes = activity.votes?.length ?? 0}
+                        <div
+                          class={`flex w-full flex-col gap-3 rounded-2xl border p-3 text-left shadow-sm transition md:flex-row md:items-center ${getProposalClasses(
+                            votes,
+                            totals.total,
+                            totals.max
+                          )}`}
+                        >
+                          <button
+                            class="flex flex-1 items-center gap-3 text-left"
+                            type="button"
+                            on:click={() => openActivityModal(activity)}
+                          >
+                            <div class="h-14 w-14 overflow-hidden rounded-xl bg-base-200">
+                              <img
+                                class="h-full w-full object-cover"
+                                src={activity.image ??
+                                  'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=600&q=80'}
+                                alt={activity.title}
+                              />
+                            </div>
+                            <div>
+                              <p class="text-base font-semibold">{activity.title}</p>
+                              <p class="text-sm text-base-content/60">{activity.location}</p>
+                              {#if activity.isProposed}
+                                <p class="text-xs text-base-content/50">
+                                  Proposed by {activity.proposerName ?? 'Guest'}
+                                </p>
+                              {/if}
+                            </div>
+                          </button>
+                          <div class="flex items-center gap-3">
+                            <button
+                              class={`btn btn-sm ${
+                                activity.hasVoted
+                                  ? 'btn-outline border-primary text-primary'
+                                  : 'btn-primary'
+                              }`}
+                              type="button"
+                              on:click|stopPropagation={() => toggleVote(activity)}
+                              disabled={isVoteSubmitting}
+                            >
+                              {activity.hasVoted ? "I'm out" : "I'm in"}
+                            </button>
+                            <div class="flex items-center">
+                              <div class="flex -space-x-3">
+                                {#each (activity.votes ?? []).slice(0, 3) as voter}
+                                  {#if voter.picture}
+                                    <img
+                                      class="h-10 w-10 rounded-full border border-base-100 object-cover"
+                                      src={voter.picture}
+                                      alt={voter.name}
+                                    />
+                                  {:else}
+                                    <div class="h-10 w-10 rounded-full border border-base-100 bg-base-100 text-[0.6rem] font-semibold flex items-center justify-center">
+                                      {voter.name.slice(0, 1).toUpperCase()}
+                                    </div>
+                                  {/if}
+                                {/each}
+                                {#if (activity.votes?.length ?? 0) > 3}
+                                  <div class="h-10 w-10 rounded-full border border-base-100 bg-base-100 text-[0.6rem] font-semibold flex items-center justify-center">
+                                    +{(activity.votes?.length ?? 0) - 3}
+                                  </div>
+                                {/if}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      {/each}
+                    </div>
+                  </div>
+                {:else}
+                  <button
+                    class="w-full rounded-2xl border border-base-200 bg-base-100 text-left shadow-sm transition hover:border-primary/40 hover:shadow-md"
+                    type="button"
+                    on:click={() => openActivityModal(group.activity)}
                   >
-                    <button
-                      class="flex flex-1 items-center gap-3 text-left"
-                      type="button"
-                      on:click={() => openActivityModal(activity)}
-                    >
-                      <div class="h-14 w-14 overflow-hidden rounded-xl bg-base-200">
+                    <div class="flex flex-col gap-4 p-4 md:flex-row md:items-center">
+                      <div class="h-20 w-full overflow-hidden rounded-xl bg-base-200 md:h-16 md:w-24">
                         <img
                           class="h-full w-full object-cover"
-                          src={activity.image ??
+                          src={group.activity.image ??
                             'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=600&q=80'}
-                          alt={activity.title}
+                          alt={group.activity.title}
                         />
                       </div>
-                      <div>
-                        <p class="text-base font-semibold">{activity.title}</p>
-                        <p class="text-sm text-base-content/60">{activity.location}</p>
-                        {#if activity.isProposed}
-                          <p class="text-xs text-base-content/50">
-                            Proposed by {activity.proposerName ?? 'Guest'}
-                          </p>
-                        {/if}
-                      </div>
-                    </button>
-                    <div class="flex items-center gap-3">
-                      <button
-                        class={`btn btn-sm ${
-                          activity.hasVoted
-                            ? 'btn-outline border-primary text-primary'
-                            : 'btn-primary'
-                        }`}
-                        type="button"
-                        on:click|stopPropagation={() => toggleVote(activity)}
-                        disabled={isVoteSubmitting}
-                      >
-                        {activity.hasVoted ? "I'm out" : "I'm in"}
-                      </button>
-                      <div class="flex items-center">
-                        <div class="flex -space-x-3">
-                          {#each (activity.votes ?? []).slice(0, 3) as voter}
-                            {#if voter.picture}
-                              <img
-                                class="h-10 w-10 rounded-full border border-base-100 object-cover"
-                                src={voter.picture}
-                                alt={voter.name}
-                              />
-                            {:else}
-                              <div class="h-10 w-10 rounded-full border border-base-100 bg-base-100 text-[0.6rem] font-semibold flex items-center justify-center">
-                                {voter.name.slice(0, 1).toUpperCase()}
+                      <div class="flex-1 space-y-2">
+                        <div class="flex flex-wrap items-start justify-between gap-4">
+                          <div>
+                            <h4 class="text-base font-semibold">{group.activity.title}</h4>
+                            <p class="text-sm text-base-content/60">{group.activity.location}</p>
+                          </div>
+                          <div class="flex items-center gap-3">
+                            {#if group.activity.status}
+                              <div class="flex flex-col items-end">
+                                <span
+                                  class={`badge badge-outline ${
+                                    group.activity.status.toLowerCase() === 'proposed'
+                                      ? 'text-warning'
+                                      : 'text-primary'
+                                  }`}
+                                >
+                                  {group.activity.status}
+                                </span>
                               </div>
                             {/if}
-                          {/each}
-                          {#if (activity.votes?.length ?? 0) > 3}
-                            <div class="h-10 w-10 rounded-full border border-base-100 bg-base-100 text-[0.6rem] font-semibold flex items-center justify-center">
-                              +{(activity.votes?.length ?? 0) - 3}
-                            </div>
-                          {/if}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                {/each}
-              </div>
-            </div>
-          {:else}
-            <button
-              class="w-full rounded-2xl border border-base-200 bg-base-100 text-left shadow-sm transition hover:border-primary/40 hover:shadow-md"
-              type="button"
-              on:click={() => openActivityModal(group.activity)}
-            >
-              <div class="flex flex-col gap-4 p-4 md:flex-row md:items-center">
-                <div class="h-20 w-full overflow-hidden rounded-xl bg-base-200 md:h-16 md:w-24">
-                  <img
-                    class="h-full w-full object-cover"
-                    src={group.activity.image ??
-                      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=600&q=80'}
-                    alt={group.activity.title}
-                  />
-                </div>
-                <div class="flex-1 space-y-2">
-                  <div class="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <h4 class="text-base font-semibold">{group.activity.title}</h4>
-                      <p class="text-sm text-base-content/60">{group.activity.location}</p>
-                    </div>
-                    <div class="flex items-center gap-3">
-                      {#if group.activity.status}
-                        <div class="flex flex-col items-end">
-                          <span
-                            class={`badge badge-outline ${
-                              group.activity.status.toLowerCase() === 'proposed'
-                                ? 'text-warning'
-                                : 'text-primary'
-                            }`}
-                          >
-                            {group.activity.status}
-                          </span>
-                        </div>
-                      {/if}
-                    </div>
-                  </div>
-                    <div class="flex flex-wrap items-center gap-3 text-xs text-base-content/70">
-                    {#if group.activity.cost !== undefined}
-                      <span class="badge badge-outline">${group.activity.cost}</span>
-                    {/if}
-                    <div class="ml-auto flex items-center">
-                      <div class="flex -space-x-3">
-                        {#each (group.activity.votes ?? []).slice(0, 3) as voter}
-                          {#if voter.picture}
-                            <img
-                              class="h-10 w-10 rounded-full border border-base-100 object-cover"
-                              src={voter.picture}
-                              alt={voter.name}
-                            />
-                          {:else}
-                            <div class="h-10 w-10 rounded-full border border-base-100 bg-base-100 text-[0.55rem] font-semibold flex items-center justify-center">
-                              {voter.name.slice(0, 1).toUpperCase()}
-                            </div>
-                          {/if}
-                        {/each}
-                        {#if (group.activity.votes?.length ?? 0) > 3}
-                          <div class="h-10 w-10 rounded-full border border-base-100 bg-base-100 text-[0.55rem] font-semibold flex items-center justify-center">
-                            +{(group.activity.votes?.length ?? 0) - 3}
                           </div>
-                        {/if}
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3 text-xs text-base-content/70">
+                          {#if group.activity.cost !== undefined}
+                            <span class="badge badge-outline">${group.activity.cost}</span>
+                          {/if}
+                          <div class="ml-auto flex items-center">
+                            <div class="flex -space-x-3">
+                              {#each (group.activity.votes ?? []).slice(0, 3) as voter}
+                                {#if voter.picture}
+                                  <img
+                                    class="h-10 w-10 rounded-full border border-base-100 object-cover"
+                                    src={voter.picture}
+                                    alt={voter.name}
+                                  />
+                                {:else}
+                                  <div class="h-10 w-10 rounded-full border border-base-100 bg-base-100 text-[0.55rem] font-semibold flex items-center justify-center">
+                                    {voter.name.slice(0, 1).toUpperCase()}
+                                  </div>
+                                {/if}
+                              {/each}
+                              {#if (group.activity.votes?.length ?? 0) > 3}
+                                <div class="h-10 w-10 rounded-full border border-base-100 bg-base-100 text-[0.55rem] font-semibold flex items-center justify-center">
+                                  +{(group.activity.votes?.length ?? 0) - 3}
+                                </div>
+                              {/if}
+                            </div>
+                          </div>
+                          {#if group.activity.isProposed}
+                            <button
+                              class={`btn btn-xs ml-auto ${
+                                group.activity.hasVoted
+                                  ? 'btn-outline border-primary text-primary'
+                                  : 'btn-primary'
+                              }`}
+                              on:click|stopPropagation={() => toggleVote(group.activity)}
+                              type="button"
+                            >
+                              {group.activity.hasVoted ? "I'm out" : "I'm in!"}
+                            </button>
+                          {/if}
+                        </div>
                       </div>
                     </div>
-                    {#if group.activity.isProposed}
-                      <button
-                        class={`btn btn-xs ml-auto ${
-                          group.activity.hasVoted
-                            ? 'btn-outline border-primary text-primary'
-                            : 'btn-primary'
-                        }`}
-                        on:click|stopPropagation={() => toggleVote(group.activity)}
-                        type="button"
-                      >
-                        {group.activity.hasVoted ? "I'm out" : "I'm in!"}
-                      </button>
-                    {/if}
-                  </div>
-                </div>
-              </div>
-              {#if group.activity.options}
-                <div class="border-t border-base-200 px-4 pb-4">
-                  <div class="mt-4 space-y-3">
-                    {#each group.activity.options as option}
-                      <div class="flex items-center justify-between rounded-xl border border-base-200 p-3">
-                        <div class="flex items-center gap-3">
-                          {#if option.image}
-                            <img class="h-10 w-10 rounded-xl object-cover" src={option.image} alt={option.name} />
-                          {/if}
-                          <span class="font-semibold">{option.name}</span>
-                        </div>
-                        <div class="flex items-center gap-3">
-                          <button class="btn btn-xs btn-outline">Vote</button>
+                    {#if group.activity.options}
+                      <div class="border-t border-base-200 px-4 pb-4">
+                        <div class="mt-4 space-y-3">
+                          {#each group.activity.options as option}
+                            <div class="flex items-center justify-between rounded-xl border border-base-200 p-3">
+                              <div class="flex items-center gap-3">
+                                {#if option.image}
+                                  <img class="h-10 w-10 rounded-xl object-cover" src={option.image} alt={option.name} />
+                                {/if}
+                                <span class="font-semibold">{option.name}</span>
+                              </div>
+                              <div class="flex items-center gap-3">
+                                <button class="btn btn-xs btn-outline">Vote</button>
+                              </div>
+                            </div>
+                          {/each}
                         </div>
                       </div>
-                    {/each}
-                  </div>
-                </div>
+                    {/if}
+                  </button>
+                {/if}
+              </div>
+              {#if index < groupedActivities.length - 1}
+                <hr class="bg-primary/40" />
               {/if}
-            </button>
-          {/if}
-        </div>
-      </div>
-    {/each}
-  </div>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </div>
+</div>
 </div>
 
 <input id="activity-detail-modal" type="checkbox" class="modal-toggle" bind:checked={activityModalOpen} />

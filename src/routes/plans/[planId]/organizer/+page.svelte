@@ -163,7 +163,16 @@
   };
 
   const handlePlanRangeEnd = (event: CustomEvent<Date>) => {
-    planEndDate = normalizeCalendarDate(event.detail);
+    const selectedEnd = startOfDay(normalizeCalendarDate(event.detail));
+    if (planStartDate) {
+      const selectedStart = startOfDay(planStartDate);
+      if (selectedEnd < selectedStart) {
+        planDateError = 'End date cannot be before the start date.';
+        return;
+      }
+    }
+    planDateError = '';
+    planEndDate = selectedEnd;
   };
 
   const handleActivityRangeStart = (event: CustomEvent<Date>) => {
@@ -179,7 +188,17 @@
   };
 
   const handleActivityRangeEnd = (event: CustomEvent<Date>) => {
-    activityEndDay = formatDate(normalizeCalendarDate(event.detail));
+    const selectedEnd = startOfDay(normalizeCalendarDate(event.detail));
+    if (activityStartDay) {
+      const parsedStart = parseLocalDate(activityStartDay);
+      const selectedStart = parsedStart ? startOfDay(parsedStart) : null;
+      if (selectedStart && selectedEnd < selectedStart) {
+        activityDateError = 'End date cannot be before the start date.';
+        return;
+      }
+    }
+    activityDateError = '';
+    activityEndDay = formatDate(selectedEnd);
   };
 
   const buildDateTime = (date: string, time: string) => {
@@ -230,6 +249,16 @@
       const selected = parsed ? startOfDay(parsed) : null;
       if (selected && selected < today) {
         activityDateError = 'Start date cannot be in the past.';
+        return;
+      }
+    }
+    if (activityStartDay && activityEndDay) {
+      const parsedStart = parseLocalDate(activityStartDay);
+      const parsedEnd = parseLocalDate(activityEndDay);
+      const selectedStart = parsedStart ? startOfDay(parsedStart) : null;
+      const selectedEnd = parsedEnd ? startOfDay(parsedEnd) : null;
+      if (selectedStart && selectedEnd && selectedStart > selectedEnd) {
+        activityDateError = 'End date cannot be before the start date.';
         return;
       }
     }
@@ -367,6 +396,14 @@
       const selected = startOfDay(planStartDate);
       if (selected < today) {
         planDateError = 'Start date cannot be in the past.';
+        return;
+      }
+    }
+    if (planStartDate && planEndDate) {
+      const selectedStart = startOfDay(planStartDate);
+      const selectedEnd = startOfDay(planEndDate);
+      if (selectedStart > selectedEnd) {
+        planDateError = 'End date cannot be before the start date.';
         return;
       }
     }
@@ -626,7 +663,7 @@
         {#if !venmoHandle}
           <div class="alert alert-warning">
             <span>
-              Add your Venmo handle to enable faster buy-in payouts.
+              Add your handle to enable participant payouts.
               <a class="link link-hover ml-1" href="/profile">Update profile</a>
             </span>
           </div>

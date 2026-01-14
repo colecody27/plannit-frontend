@@ -134,6 +134,22 @@ export const mapPlanFromApi = (plan: ApiPlan, index = 0): Plan => {
   const locationParts = [plan.city, plan.state, plan.country].filter(Boolean);
   const resolvedLocation =
     locationParts.length > 0 ? locationParts.join(', ') : plan.location ?? 'Location TBD';
+  const participants = Array.isArray(plan.participants)
+    ? plan.participants.map(mapParticipant)
+    : Array.isArray(plan.participant_ids)
+      ? plan.participant_ids.map(mapParticipant)
+      : [];
+  if (plan.organizer?.id) {
+    const hasOrganizer = participants.some((person) => person.id === plan.organizer?.id);
+    if (!hasOrganizer) {
+      participants.unshift({
+        id: plan.organizer.id ?? 'organizer',
+        name: plan.organizer.name ?? 'Organizer',
+        avatar: plan.organizer.picture ?? undefined,
+        status: 'organizer'
+      });
+    }
+  }
 
   return {
     id: plan.id ?? `plan-${index}`,
@@ -152,9 +168,7 @@ export const mapPlanFromApi = (plan: ApiPlan, index = 0): Plan => {
     goal,
     raised,
     perPerson,
-    participants: Array.isArray(plan.participant_ids)
-      ? plan.participant_ids.map(mapParticipant)
-      : [],
+    participants,
     createdAt: parseDate(plan.created_at)
   };
 };

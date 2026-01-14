@@ -14,13 +14,12 @@ html[data-theme='plannit-dark'] {
 
 body {
   font-family: 'Manrope', sans-serif;
-  background: linear-gradient(180deg, rgba(247, 252, 249, 0.95) 0%, rgba(237, 246, 241, 0.85) 100%);
+  background: hsl(var(--b2));
   min-height: 100vh;
 }
 
 html[data-theme='plannit-dark'] body {
-  background: radial-gradient(circle at top, rgba(23, 230, 142, 0.12), rgba(11, 20, 17, 0.6) 45%),
-    linear-gradient(180deg, rgba(11, 20, 17, 0.98) 0%, rgba(8, 14, 12, 0.98) 100%);
+  background: hsl(var(--b2));
 }
 
 h1,
@@ -31,18 +30,28 @@ h4 {
 }
 
 .app-shell {
-  background-image: radial-gradient(circle at 20% 10%, rgba(23, 230, 142, 0.16), transparent 45%),
-    radial-gradient(circle at 90% 0%, rgba(155, 231, 255, 0.2), transparent 40%);
+  background-color: hsl(var(--b2));
 }
 
 html[data-theme='plannit-dark'] .app-shell {
-  background-image: radial-gradient(circle at 18% 12%, rgba(23, 230, 142, 0.18), transparent 48%),
-    radial-gradient(circle at 85% 0%, rgba(18, 40, 32, 0.7), transparent 45%);
+  background-color: hsl(var(--b2));
 }
 
 .card-border {
   border: 1px solid hsl(var(--b2));
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme='plannit'] .card,
+html[data-theme='plannit'] .card.bg-base-100,
+html[data-theme='plannit'] .card[class*='bg-base-'] {
+  background-color: #c7e6d4 !important;
+}
+
+html[data-theme='plannit-dark'] .card,
+html[data-theme='plannit-dark'] .card.bg-base-100,
+html[data-theme='plannit-dark'] .card[class*='bg-base-'] {
+  background-color: #0f1d17 !important;
 }
 
 .section-spacing {
