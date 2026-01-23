@@ -24,6 +24,8 @@ export interface Activity {
   description?: string;
   link?: string;
   cost?: number;
+  costIsPerPerson?: boolean;
+  costTotal?: number;
   status?: string;
   options?: ActivityOption[];
   image?: string;
@@ -35,6 +37,7 @@ export interface Activity {
 }
 
 export interface ActivityVote {
+  id?: string;
   name: string;
   picture?: string;
 }
@@ -57,6 +60,12 @@ export interface Plan {
   raised: number;
   perPerson: number;
   participants: Participant[];
+  organizer?: {
+    id?: string;
+    name?: string;
+    picture?: string;
+    venmo?: string;
+  };
   createdAt?: Date | null;
 }
 

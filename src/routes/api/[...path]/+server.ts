@@ -36,6 +36,8 @@ const proxyRequest: RequestHandler = async ({ request, url, params, cookies }) =
     const data = await response.json().catch(() => ({}));
     const token = typeof data?.token === 'string' ? data.token : null;
     if (token) {
+      const redirectTo =
+        typeof data?.redirect === 'string' && data.redirect.trim() ? data.redirect : '/dashboard';
       cookies.set('plannit-token', token, {
         path: '/',
         httpOnly: true,
@@ -45,7 +47,7 @@ const proxyRequest: RequestHandler = async ({ request, url, params, cookies }) =
       });
       return new Response(null, {
         status: 303,
-        headers: { Location: '/dashboard' }
+        headers: { Location: redirectTo }
       });
     }
     const headers = new Headers(response.headers);

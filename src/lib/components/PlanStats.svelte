@@ -23,7 +23,7 @@
   </div>
   <div class="card bg-base-100 border border-base-200 shadow-sm">
     <div class="card-body">
-      <p class="text-xs uppercase tracking-wide text-base-content/50">Cost per person</p>
+      <p class="text-xs uppercase tracking-wide text-base-content/50">Your total</p>
       <p class="text-2xl font-semibold">${perPerson.toLocaleString()}</p>
     </div>
   </div>

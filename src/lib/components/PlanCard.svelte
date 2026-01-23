@@ -4,6 +4,8 @@
   import Avatar from '$lib/components/Avatar.svelte';
 
   export let plan: Plan;
+  export let ctaHref: string | null = null;
+  export let ctaLabel = 'Manage ->';
 
   $: progressValue = plan.goal > 0 ? (plan.raised / plan.goal) * 100 : 0;
   $: displayLocation =
@@ -117,7 +119,9 @@
           />
         {/if}
       </div>
-      <a class="text-sm font-semibold text-primary" href={`/plans/${plan.id}/organizer`}>Manage -></a>
+      <a class="text-sm font-semibold text-primary" href={ctaHref ?? `/plans/${plan.id}/organizer`}>
+        {ctaLabel}
+      </a>
     </div>
   </div>
 </div>

@@ -7,11 +7,13 @@
   import ItineraryTimeline from '$lib/components/ItineraryTimeline.svelte';
   import ParticipantsCard from '$lib/components/ParticipantsCard.svelte';
   import ChatPanel from '$lib/components/ChatPanel.svelte';
+  import AddActivityModal from '$lib/components/AddActivityModal.svelte';
   import LocationAutocomplete from '$lib/components/LocationAutocomplete.svelte';
   import type { Activity } from '$lib/types';
   import { formatShortDate } from '$lib/models/plan';
   import { apiFetch } from '$lib/api/client';
   import { invalidate } from '$app/navigation';
+  import { browser } from '$app/environment';
 
   const props = $props();
   const venmoHandle = props.data.profile?.venmoHandle ?? '';
@@ -36,22 +38,11 @@
   let inviteModalOpen = $state(false);
   let copiedInvite = $state(false);
   let addActivityOpen = $state(false);
-  let activityName = $state('');
-  let activityLocation = $state('');
-  let activityLink = $state('');
-  let activityDetails = $state('');
-  let activityCost = $state('');
-  let activityStartDay = $state('');
-  let activityEndDay = $state('');
-  let isAllDay = $state(false);
-  let activityStartTime = $state('');
-  let activityEndTime = $state('');
-  let activityError = $state('');
-  let activityDateError = $state('');
-  let isActivitySaving = $state(false);
   let isEditing = $state(false);
   let isPlanSaving = $state(false);
+  let isPlanLocking = $state(false);
   let planSaveError = $state('');
+  let planLockError = $state('');
   let planDateError = $state('');
   let planTitle = $state(props.data.plan?.title ?? '');
   let planDescription = $state(props.data.plan?.description ?? '');
@@ -63,6 +54,7 @@
   let planEndDate = $state<Date | null>(props.data.plan?.endDay ?? null);
   let itineraryTimeline: { openActivityModal: (activity: Activity) => void } | null = null;
   let rejectedCarousel: HTMLDivElement | null = null;
+  let activities = $state(props.data.plan?.activities ?? []);
   let originalPlan = $state({
     title: planTitle,
     description: planDescription,
@@ -98,6 +90,39 @@
     itineraryTimeline.openActivityModal(activity);
   };
 
+  const buildInviteLink = (rawLink: string, planId: string, inviteId: string) => {
+    const origin = browser ? window.location.origin : '';
+    const fallback = origin
+      ? `${origin}/plans/${planId}/invite/${inviteId}`
+      : `/plans/${planId}/invite/${inviteId}`;
+
+    if (!rawLink) {
+      return fallback;
+    }
+
+    try {
+      if (rawLink.startsWith('http')) {
+        const url = new URL(rawLink);
+        const path = url.pathname.startsWith('/plan/')
+          ? url.pathname.replace(/^\/plan\//, '/plans/')
+          : url.pathname;
+        return origin ? `${origin}${path}${url.search}` : `${path}${url.search}`;
+      }
+    } catch (error) {
+      return fallback;
+    }
+
+    if (rawLink.startsWith('/plan/')) {
+      return origin + rawLink.replace(/^\/plan\//, '/plans/');
+    }
+
+    if (rawLink.startsWith('/plans/')) {
+      return origin + rawLink;
+    }
+
+    return fallback;
+  };
+
   const formatCountdown = (start?: Date | null) => {
     if (!start) {
       return 'TBD';
@@ -121,15 +146,6 @@
   onMount(async () => {
     await import('cally');
   });
-
-  const formatCost = () => {
-    const parsed = Number(activityCost);
-    if (Number.isNaN(parsed)) {
-      activityCost = '';
-      return;
-    }
-    activityCost = parsed.toFixed(2);
-  };
 
   const formatDate = (date: Date) => {
     const year = date.getFullYear();
@@ -175,129 +191,6 @@
     planEndDate = selectedEnd;
   };
 
-  const handleActivityRangeStart = (event: CustomEvent<Date>) => {
-    const today = startOfDay(new Date());
-    const selected = startOfDay(normalizeCalendarDate(event.detail));
-    if (selected < today) {
-      activityDateError = 'Start date cannot be in the past.';
-      return;
-    }
-    activityDateError = '';
-    activityStartDay = formatDate(selected);
-    activityEndDay = '';
-  };
-
-  const handleActivityRangeEnd = (event: CustomEvent<Date>) => {
-    const selectedEnd = startOfDay(normalizeCalendarDate(event.detail));
-    if (activityStartDay) {
-      const parsedStart = parseLocalDate(activityStartDay);
-      const selectedStart = parsedStart ? startOfDay(parsedStart) : null;
-      if (selectedStart && selectedEnd < selectedStart) {
-        activityDateError = 'End date cannot be before the start date.';
-        return;
-      }
-    }
-    activityDateError = '';
-    activityEndDay = formatDate(selectedEnd);
-  };
-
-  const buildDateTime = (date: string, time: string) => {
-    if (!date) {
-      return undefined;
-    }
-    const safeTime = time || '09:00';
-    return new Date(`${date}T${safeTime}`).toISOString();
-  };
-
-  const resetActivityForm = () => {
-    activityName = '';
-    activityLocation = '';
-    activityLink = '';
-    activityDetails = '';
-    activityCost = '';
-    activityStartDay = '';
-    activityEndDay = '';
-    isAllDay = false;
-    activityStartTime = '';
-    activityEndTime = '';
-    activityError = '';
-  };
-
-  const handleSaveActivity = async () => {
-    if (isActivitySaving) {
-      return;
-    }
-    activityError = '';
-    if (activityDateError) {
-      return;
-    }
-
-    const trimmedName = activityName.trim();
-    if (!trimmedName) {
-      activityError = 'Activity name is required.';
-      return;
-    }
-
-    const planId = props.data.plan?.id;
-    if (!planId) {
-      activityError = 'Plan is unavailable.';
-      return;
-    }
-    if (activityStartDay) {
-      const today = startOfDay(new Date());
-      const parsed = parseLocalDate(activityStartDay);
-      const selected = parsed ? startOfDay(parsed) : null;
-      if (selected && selected < today) {
-        activityDateError = 'Start date cannot be in the past.';
-        return;
-      }
-    }
-    if (activityStartDay && activityEndDay) {
-      const parsedStart = parseLocalDate(activityStartDay);
-      const parsedEnd = parseLocalDate(activityEndDay);
-      const selectedStart = parsedStart ? startOfDay(parsedStart) : null;
-      const selectedEnd = parsedEnd ? startOfDay(parsedEnd) : null;
-      if (selectedStart && selectedEnd && selectedStart > selectedEnd) {
-        activityDateError = 'End date cannot be before the start date.';
-        return;
-      }
-    }
-
-    isActivitySaving = true;
-    try {
-      const startTime = buildDateTime(
-        activityStartDay,
-        isAllDay ? '00:00' : activityStartTime
-      );
-      const endBase = activityEndDay || activityStartDay;
-      const endTime = buildDateTime(
-        endBase,
-        isAllDay ? '23:59' : activityEndTime || '17:00'
-      );
-
-      await apiFetch(`/plan/${planId}/activity`, {
-        method: 'POST',
-        body: JSON.stringify({
-          name: trimmedName,
-          location: activityLocation.trim() || undefined,
-          description: activityDetails.trim() || undefined,
-          link: activityLink.trim() || undefined,
-          cost: activityCost ? Number(activityCost) : undefined,
-          start_time: startTime,
-          end_time: endTime
-        })
-      });
-
-      await invalidate(`/api/plan/${planId}`);
-      addActivityOpen = false;
-      resetActivityForm();
-    } catch (error) {
-      activityError = error instanceof Error ? error.message : 'Unable to save activity.';
-    } finally {
-      isActivitySaving = false;
-    }
-  };
-
   const copyInviteLink = async () => {
     try {
       await navigator.clipboard.writeText(inviteLink);
@@ -331,9 +224,7 @@
         const rawLink = payload.data.link;
         const inviteId = payload.data.id ?? rawLink;
         const resolvedPlanId = payload.data.plan_id ?? planId;
-        inviteLink = rawLink.startsWith('http')
-          ? rawLink
-          : `http://localhost:5000/plan/${resolvedPlanId}/invite/${inviteId}`;
+        inviteLink = buildInviteLink(rawLink, resolvedPlanId, inviteId);
       } else {
         inviteStatus = 'Invite link unavailable.';
       }
@@ -375,6 +266,33 @@
   };
 
   $effect(syncPlanFromProps);
+  $effect(() => {
+    activities = props.data.plan?.activities ?? [];
+  });
+
+  const handleActivityUpdate = (event: CustomEvent<Activity>) => {
+    const updated = event.detail;
+    activities = activities.map((activity) =>
+      activity.id === updated.id ? updated : activity
+    );
+  };
+
+  const togglePlanLock = async () => {
+    const planId = props.data.plan?.id;
+    if (!planId || isPlanLocking) {
+      return;
+    }
+    planLockError = '';
+    isPlanLocking = true;
+    try {
+      await apiFetch(`/plan/${planId}/lock-toggle`, { method: 'PUT' });
+      await invalidate(`/api/plan/${planId}`);
+    } catch (error) {
+      planLockError = error instanceof Error ? error.message : 'Unable to update plan status.';
+    } finally {
+      isPlanLocking = false;
+    }
+  };
 
   const toDay = (value: Date | null) => (value ? formatDate(value) : null);
 
@@ -480,6 +398,30 @@
     return hasHost ? participants : [hostParticipant, ...participants];
   });
 
+  const isPlanLocked = $derived.by(
+    () => (props.data.plan?.status ?? '').toLowerCase() === 'locked'
+  );
+
+  const userTotalCost = $derived.by(() => {
+    const profileId = props.data.profile?.id;
+    if (!profileId) {
+      return 0;
+    }
+    return activities.reduce((sum, activity) => {
+      const hasVote = Array.isArray(activity.votes)
+        ? activity.votes.some((vote) => vote.id === profileId)
+        : false;
+      return hasVote ? sum + (activity.cost ?? 0) : sum;
+    }, 0);
+  });
+
+  const confirmedTotalCost = $derived.by(() =>
+    activities.reduce((sum, activity) => {
+      const isConfirmed = activity.status?.toLowerCase() === 'confirmed';
+      return isConfirmed ? sum + (activity.costTotal ?? 0) : sum;
+    }, 0)
+  );
+
   const rejectedActivities = $derived.by(() =>
     (props.data.plan?.activities ?? []).filter(
       (activity) => activity.status?.toLowerCase() === 'rejected'
@@ -511,6 +453,9 @@
           inviteTargetId="invite-modal"
           showMeta={false}
           onInvite={loadInviteLink}
+          finalizeLabel={isPlanLocked ? 'Unlock Plan' : 'Finalize Plan'}
+          finalizeDisabled={isPlanLocking}
+          onFinalize={togglePlanLock}
         >
           <button
             slot="edit-action"
@@ -530,6 +475,9 @@
         </PlanHeader>
         {#if planSaveError}
           <div class="alert alert-error text-sm">{planSaveError}</div>
+        {/if}
+        {#if planLockError}
+          <div class="alert alert-error text-sm">{planLockError}</div>
         {/if}
         {#if isEditing}
           <div class="rounded-2xl border border-base-200 bg-base-100 p-4">
@@ -669,19 +617,20 @@
           </div>
         {/if}
         <PlanStats
-          budget={props.data.plan.goal}
+          budget={confirmedTotalCost}
           collected={props.data.plan.raised}
-          perPerson={props.data.plan.perPerson}
+          perPerson={userTotalCost}
           countdown={formatCountdown(planStartDate)}
         />
 
         <div class="grid gap-6 lg:grid-cols-[2fr,1fr]">
           <div class="space-y-6">
             <ItineraryTimeline
-              activities={props.data.plan.activities}
+              activities={activities}
               addTargetId="add-activity-modal"
               emphasizeAdd={true}
               bind:this={itineraryTimeline}
+              on:activityUpdate={handleActivityUpdate}
             />
           </div>
           <div class="space-y-6">
@@ -818,122 +767,11 @@
       <label class="modal-backdrop" for="manage-participants-modal">Close</label>
     </div>
 
-    <input id="add-activity-modal" type="checkbox" class="modal-toggle" bind:checked={addActivityOpen} />
-    <div class="modal" role="dialog">
-      <div class="modal-box">
-        <h3 class="text-lg font-semibold mb-4">Add Activity</h3>
-        <div class="space-y-3">
-          <label class="form-control">
-            <span class="label-text">Activity name</span>
-            <input class="input input-bordered" placeholder="Arrival & Check-in" bind:value={activityName} />
-          </label>
-          <label class="form-control">
-            <span class="label-text">Timeframe</span>
-            <div class="rounded-2xl border border-base-200 p-3 flex justify-center">
-              <calendar-range
-                months={1}
-                min={minSelectableDate}
-                page-by="single"
-                on:rangestart={handleActivityRangeStart}
-                on:rangeend={handleActivityRangeEnd}
-              >
-                <calendar-month></calendar-month>
-              </calendar-range>
-            </div>
-            {#if activityDateError}
-              <p class="text-xs text-error">{activityDateError}</p>
-            {/if}
-          </label>
-          <div class="grid gap-3 md:grid-cols-2">
-            <label class="form-control">
-              <span class="label-text">Start day</span>
-              <input
-                class="input input-bordered"
-                type="text"
-                placeholder="Select start day"
-                bind:value={activityStartDay}
-                readonly
-              />
-            </label>
-            <label class="form-control">
-              <span class="label-text">End day</span>
-              <input
-                class="input input-bordered"
-                type="text"
-                placeholder="Select end day"
-                bind:value={activityEndDay}
-                readonly
-              />
-            </label>
-          </div>
-          <div class="flex items-center justify-between rounded-2xl border border-base-200 px-4 py-3 text-sm">
-            <div>
-              <p class="font-semibold">All-day</p>
-              <p class="text-xs text-base-content/60">Hide start and end time.</p>
-            </div>
-            <input type="checkbox" class="toggle toggle-primary" bind:checked={isAllDay} />
-          </div>
-          {#if !isAllDay}
-            <div class="grid gap-3 md:grid-cols-2">
-              <label class="form-control">
-                <span class="label-text">Start time</span>
-                <input class="input input-bordered" type="time" bind:value={activityStartTime} />
-              </label>
-              <label class="form-control">
-                <span class="label-text">End time</span>
-                <input class="input input-bordered" type="time" bind:value={activityEndTime} />
-              </label>
-            </div>
-          {/if}
-          <LocationAutocomplete
-            label="Location"
-            bind:location={activityLocation}
-            singleInput={true}
-            idPrefix="activity-location"
-          />
-          <label class="form-control">
-            <span class="label-text">Link</span>
-            <input class="input input-bordered" placeholder="https://maps.google.com" bind:value={activityLink} />
-          </label>
-          <label class="form-control">
-            <span class="label-text">Cost</span>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-base-content/60">
-                $
-              </span>
-              <input
-                class="input input-bordered w-full pl-7"
-                placeholder="0.00"
-                inputmode="decimal"
-                pattern="^\\d*(\\.\\d{0,2})?$"
-                min="0"
-                step="0.01"
-                bind:value={activityCost}
-                on:blur={formatCost}
-              />
-            </div>
-          </label>
-          <label class="form-control">
-            <span class="label-text">Details</span>
-            <textarea
-              class="textarea textarea-bordered h-24"
-              placeholder="Add activity details."
-              bind:value={activityDetails}
-            ></textarea>
-          </label>
-        </div>
-        {#if activityError}
-          <p class="text-xs text-error mt-3">{activityError}</p>
-        {/if}
-        <div class="modal-action">
-          <label for="add-activity-modal" class="btn btn-outline">Cancel</label>
-          <button class="btn btn-primary" on:click={handleSaveActivity} disabled={isActivitySaving}>
-            {isActivitySaving ? 'Saving...' : 'Save Activity'}
-          </button>
-        </div>
-      </div>
-      <label class="modal-backdrop" for="add-activity-modal">Close</label>
-    </div>
+    <AddActivityModal
+      planId={props.data.plan?.id ?? null}
+      modalId="add-activity-modal"
+      bind:open={addActivityOpen}
+    />
 
     <input id="remove-participant-modal" type="checkbox" class="modal-toggle" />
     <div class="modal" role="dialog">

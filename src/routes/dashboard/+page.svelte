@@ -190,7 +190,12 @@
 
     <section id="plans" class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
       {#each filteredPlans as plan (plan.id)}
-        <PlanCard {plan} />
+        {@const isHost = isHostingPlan(plan)}
+        <PlanCard
+          {plan}
+          ctaHref={isHost ? `/plans/${plan.id}/organizer` : `/plans/${plan.id}/participant`}
+          ctaLabel={isHost ? 'Manage ->' : 'View ->'}
+        />
       {/each}
       <div class="card border-2 border-dashed border-base-200 bg-base-100/60 text-center min-h-[360px]">
         <div class="p-6 flex flex-col items-center justify-center gap-2 text-center h-full">

@@ -75,49 +75,70 @@ export const formatTimeRange = (start?: Date | null, end?: Date | null): string 
   return null;
 };
 
-export const mapActivityFromApi = (activity: ApiActivity, index = 0): Activity => ({
-  id: (activity as Record<string, any>).id ?? `activity-${index}`,
-  title: activity.name ?? 'Untitled Activity',
-  startTime: parseDate(activity.start_time ?? null),
-  endTime: parseDate(activity.end_time ?? null),
-  location: (activity as Record<string, any>).location ?? 'Location TBD',
-  image: (activity as Record<string, any>).image ?? undefined,
-  description: activity.description ?? undefined,
-  link: activity.link ?? undefined,
-  cost: activity.cost ?? undefined,
-  status:
-    activity.status?.toLowerCase() === 'accepted'
-      ? 'Confirmed'
-      : activity.status ?? undefined,
-  options: undefined,
-  isProposed: activity.status?.toLowerCase() === 'proposed',
-  hasVoted: Array.isArray(activity.votes) && activity.votes.length > 0,
-  proposerId:
-    (activity as Record<string, any>).proposer?.id ??
-    (activity as Record<string, any>).proposer_id ??
-    undefined,
-  proposerName:
-    (activity as Record<string, any>).proposer?.name ??
-    (activity as Record<string, any>).proposer_name ??
-    (activity as Record<string, any>).proposer ??
-    undefined,
-  votes: Array.isArray(activity.votes)
-    ? activity.votes
-        .map((vote) => {
-          if (typeof vote === 'string') {
-            return { name: vote };
-          }
-          if (vote && typeof vote === 'object') {
-            const data = vote as Record<string, unknown>;
-            const name = typeof data.name === 'string' ? data.name : 'Guest';
-            const picture = typeof data.picture === 'string' ? data.picture : undefined;
-            return { name, picture };
-          }
-          return null;
-        })
-        .filter((vote): vote is { name: string; picture?: string } => Boolean(vote))
-    : []
-});
+export const mapActivityFromApi = (activity: ApiActivity, index = 0): Activity => {
+  const rawCost = activity.cost;
+  const costData =
+    rawCost && typeof rawCost === 'object' ? (rawCost as Record<string, unknown>) : null;
+  const perPerson =
+    costData && typeof costData.per_person === 'number'
+      ? costData.per_person
+      : typeof rawCost === 'number'
+        ? rawCost
+        : undefined;
+  const isPerPerson =
+    costData && typeof costData.is_per_person === 'boolean'
+      ? costData.is_per_person
+      : undefined;
+  const totalCost =
+    costData && typeof costData.total_cost === 'number' ? costData.total_cost : undefined;
+
+  return {
+    id: (activity as Record<string, any>).id ?? `activity-${index}`,
+    title: activity.name ?? 'Untitled Activity',
+    startTime: parseDate(activity.start_time ?? null),
+    endTime: parseDate(activity.end_time ?? null),
+    location: (activity as Record<string, any>).location ?? 'Location TBD',
+    image: (activity as Record<string, any>).image ?? undefined,
+    description: activity.description ?? undefined,
+    link: activity.link ?? undefined,
+    cost: perPerson,
+    costIsPerPerson: isPerPerson,
+    costTotal: totalCost,
+    status:
+      activity.status?.toLowerCase() === 'accepted'
+        ? 'Confirmed'
+        : activity.status ?? undefined,
+    options: undefined,
+    isProposed: activity.status?.toLowerCase() === 'proposed',
+    hasVoted: Array.isArray(activity.votes) && activity.votes.length > 0,
+    proposerId:
+      (activity as Record<string, any>).proposer?.id ??
+      (activity as Record<string, any>).proposer_id ??
+      undefined,
+    proposerName:
+      (activity as Record<string, any>).proposer?.name ??
+      (activity as Record<string, any>).proposer_name ??
+      (activity as Record<string, any>).proposer ??
+      undefined,
+    votes: Array.isArray(activity.votes)
+      ? activity.votes
+          .map((vote) => {
+            if (typeof vote === 'string') {
+              return { name: vote };
+            }
+            if (vote && typeof vote === 'object') {
+              const data = vote as Record<string, unknown>;
+              const name = typeof data.name === 'string' ? data.name : 'Guest';
+              const picture = typeof data.picture === 'string' ? data.picture : undefined;
+              const id = typeof data.id === 'string' ? data.id : undefined;
+              return { id, name, picture };
+            }
+            return null;
+          })
+          .filter((vote): vote is { name: string; picture?: string } => Boolean(vote))
+      : []
+  };
+};
 
 export const mapMessageFromApi = (message: ApiMessage, index = 0): ChatMessage => ({
   id: (message as Record<string, any>).id ?? `message-${index}`,
@@ -169,6 +190,14 @@ export const mapPlanFromApi = (plan: ApiPlan, index = 0): Plan => {
     raised,
     perPerson,
     participants,
+    organizer: plan.organizer
+      ? {
+          id: plan.organizer.id ?? undefined,
+          name: plan.organizer.name ?? undefined,
+          picture: plan.organizer.picture ?? undefined,
+          venmo: plan.organizer.venmo ?? undefined
+        }
+      : undefined,
     createdAt: parseDate(plan.created_at)
   };
 };

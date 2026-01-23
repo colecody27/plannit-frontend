@@ -5,6 +5,8 @@
   import { apiFetch } from '$lib/api/client';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
+  import { browser } from '$app/environment';
+  import { getLoginUrl } from '$lib/api/auth';
 
   const props = $props();
   const plan = props.data.plan;
@@ -29,11 +31,19 @@
     acceptError = '';
     isAccepting = true;
     try {
-      await apiFetch(`/plan/${plan.id}/invite/${$page.params.inviteId}/accept`, {
-        method: 'POST'
-      });
-      await goto(`/plans/${plan.id}/participant`);
+      const response = await apiFetch<{ redirect?: string }>(
+        `/plan/${plan.id}/invite/${$page.params.inviteId}/accept`,
+        {
+          method: 'POST'
+        }
+      );
+      await goto(response?.redirect ?? `/plans/${plan.id}/participant`);
     } catch (error) {
+      const status = (error as Error & { status?: number })?.status;
+      if (browser && (status === 401 || status === 403)) {
+        window.location.href = getLoginUrl($page.url.pathname);
+        return;
+      }
       acceptError = error instanceof Error ? error.message : 'Unable to accept invitation.';
     } finally {
       isAccepting = false;

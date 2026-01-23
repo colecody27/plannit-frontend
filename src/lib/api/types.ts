@@ -9,7 +9,11 @@ export interface ApiActivity {
   name?: string;
   description?: string;
   link?: string;
-  cost?: number;
+  cost?: number | {
+    per_person?: number;
+    is_per_person?: boolean;
+    total_cost?: number;
+  };
   start_time?: string | null;
   end_time?: string | null;
   proposer_id?: string;
@@ -53,6 +57,7 @@ export interface ApiPlan {
     id?: string;
     name?: string;
     picture?: string;
+    venmo?: string;
   };
   location?: string;
   cover_image?: string;

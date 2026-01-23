@@ -5,6 +5,9 @@
   export let showFinalize = true;
   export let showInvite = true;
   export let showMeta = true;
+  export let finalizeLabel = 'Finalize Plan';
+  export let finalizeDisabled = false;
+  export let onFinalize: (() => void) | null = null;
   export let extraActionLabel: string | null = null;
   export let extraActionHref = '#';
   export let extraActionVariant: 'outline' | 'ghost' | 'error' = 'outline';
@@ -62,7 +65,9 @@
       {/if}
       <slot name="edit-action" />
       {#if showFinalize}
-        <button class="btn btn-primary">Finalize Plan</button>
+        <button class="btn btn-primary" on:click={onFinalize ?? undefined} disabled={finalizeDisabled}>
+          {finalizeLabel}
+        </button>
       {/if}
     </div>
   </div>

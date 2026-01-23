@@ -6,8 +6,10 @@
   import { page } from '$app/stores';
   import { invalidate } from '$app/navigation';
   import LocationAutocomplete from '$lib/components/LocationAutocomplete.svelte';
+  import { createEventDispatcher } from 'svelte';
 
   const props = $props();
+  const dispatch = createEventDispatcher<{ activityUpdate: Activity }>();
 
   let activities = $state<Activity[]>(props.activities ?? []);
   let activityModalOpen = $state(false);
@@ -61,19 +63,51 @@
   const isActivity = (value: unknown): value is Activity =>
     Boolean(value && typeof value === 'object' && 'id' in value && 'title' in value);
 
+  const hasVoted = (activity: Activity) => {
+    const profileId = $page.data?.profile?.id;
+    if (!profileId) {
+      return false;
+    }
+    return Array.isArray(activity.votes) && activity.votes.some((vote) => vote.id === profileId);
+  };
+
+  const normalizeActivity = (activity: Activity): Activity => ({
+    ...activity,
+    hasVoted: hasVoted(activity)
+  });
+
+  const voteCache = new Map<string, Activity['votes']>();
+
+  const cacheActivityVotes = (activity: Activity) => {
+    if (activity.votes && activity.votes.length > 0) {
+      voteCache.set(activity.id, activity.votes);
+    }
+  };
+
   const syncActivities = () => {
-    activities = props.activities ?? [];
+    activities = (props.activities ?? []).map((activity) => {
+      const cachedVotes = voteCache.get(activity.id);
+      const resolvedVotes =
+        (activity.votes && activity.votes.length > 0) ? activity.votes : cachedVotes;
+      const merged = resolvedVotes ? { ...activity, votes: resolvedVotes } : activity;
+      const normalized = normalizeActivity(merged);
+      cacheActivityVotes(normalized);
+      return normalized;
+    });
   };
 
   $effect(syncActivities);
 
   const updateActivity = (updated: Activity) => {
+    const normalized = normalizeActivity(updated);
     activities = activities.map((activity) =>
-      activity.id === updated.id ? updated : activity
+      activity.id === normalized.id ? normalized : activity
     );
-    if (selectedActivity?.id === updated.id) {
-      selectedActivity = updated;
+    if (selectedActivity?.id === normalized.id) {
+      selectedActivity = normalized;
     }
+    cacheActivityVotes(normalized);
+    dispatch('activityUpdate', normalized);
   };
 
   const groupedActivities = $derived.by(() => {
@@ -188,7 +222,6 @@
       if (updatedActivity) {
         updateActivity(updatedActivity);
       }
-      await invalidate(`/api/plan/${planId}`);
     } catch (error) {
     } finally {
       isVoteSubmitting = false;
@@ -611,7 +644,9 @@
                         </div>
                         <div class="flex flex-wrap items-center gap-3 text-xs text-base-content/70">
                           {#if group.activity.cost !== undefined}
-                            <span class="badge badge-outline">${group.activity.cost}</span>
+                            <span class="badge badge-outline">
+                              ${group.activity.cost} / person
+                            </span>
                           {/if}
                           <div class="ml-auto flex items-center">
                             <div class="flex -space-x-3">
