@@ -8,6 +8,7 @@
   import ParticipantsCard from '$lib/components/ParticipantsCard.svelte';
   import ChatPanel from '$lib/components/ChatPanel.svelte';
   import AddActivityModal from '$lib/components/AddActivityModal.svelte';
+  import ProposedActivities from '$lib/components/ProposedActivities.svelte';
   import LocationAutocomplete from '$lib/components/LocationAutocomplete.svelte';
   import type { Activity } from '$lib/types';
   import { formatShortDate } from '$lib/models/plan';
@@ -277,6 +278,11 @@
     );
   };
 
+  const handleActivityCreated = (event: CustomEvent<Activity>) => {
+    const created = event.detail;
+    activities = [created, ...activities];
+  };
+
   const togglePlanLock = async () => {
     const planId = props.data.plan?.id;
     if (!planId || isPlanLocking) {
@@ -423,18 +429,8 @@
   );
 
   const rejectedActivities = $derived.by(() =>
-    (props.data.plan?.activities ?? []).filter(
-      (activity) => activity.status?.toLowerCase() === 'rejected'
-    )
+    activities.filter((activity) => activity.status?.toLowerCase() === 'rejected')
   );
-
-  const scrollRejected = (direction: 'prev' | 'next') => {
-    if (!rejectedCarousel) {
-      return;
-    }
-    const offset = direction === 'next' ? 320 : -320;
-    rejectedCarousel.scrollBy({ left: offset, behavior: 'smooth' });
-  };
 </script>
 
 <div>
@@ -450,6 +446,7 @@
           title={planTitle}
           dateRange={formatTimeline()}
           location={planLocation}
+          planStatus={props.data.plan.status}
           inviteTargetId="invite-modal"
           showMeta={false}
           onInvite={loadInviteLink}
@@ -627,6 +624,7 @@
           <div class="space-y-6">
             <ItineraryTimeline
               activities={activities}
+              planStatus={props.data.plan.status}
               addTargetId="add-activity-modal"
               emphasizeAdd={true}
               bind:this={itineraryTimeline}
@@ -642,89 +640,16 @@
           </div>
         </div>
 
-        {#if rejectedActivities.length}
-          <section class="space-y-4">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="text-xs uppercase tracking-wide text-base-content/50">Rejected</span>
-                <h3 class="text-lg font-semibold">Proposed Activities</h3>
-              </div>
-              <div class="flex items-center gap-2">
-                <button
-                  class="btn btn-ghost btn-sm"
-                  type="button"
-                  aria-label="Scroll left"
-                  on:click={() => scrollRejected('prev')}
-                >
-                  ‹
-                </button>
-                <button
-                  class="btn btn-ghost btn-sm"
-                  type="button"
-                  aria-label="Scroll right"
-                  on:click={() => scrollRejected('next')}
-                >
-                  ›
-                </button>
-              </div>
-            </div>
-            <div
-              class="flex gap-4 overflow-x-auto pb-4 pr-2"
-              bind:this={rejectedCarousel}
-            >
-              {#each rejectedActivities as activity}
-                {@const canOpen = hostId && activity.proposerId === hostId}
-                <div
-                  class={`card w-64 shrink-0 bg-base-100 border border-base-200 shadow-sm ${
-                    canOpen ? 'cursor-pointer' : ''
-                  }`}
-                  role={canOpen ? 'button' : undefined}
-                  tabindex={canOpen ? 0 : undefined}
-                  on:click={() => openRejectedActivity(activity)}
-                  on:keydown={(event) => {
-                    if (!canOpen || (event.key !== 'Enter' && event.key !== ' ')) {
-                      return;
-                    }
-                    event.preventDefault();
-                    openRejectedActivity(activity);
-                  }}
-                >
-                  <div class="h-24 w-full overflow-hidden rounded-t-2xl bg-base-200">
-                    <img
-                      class="h-full w-full object-cover"
-                      src={activity.image ??
-                        'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80'}
-                      alt={activity.title}
-                    />
-                  </div>
-                  <div class="card-body gap-3">
-                    <div class="flex items-start justify-between gap-2">
-                      <div>
-                        <p class="font-semibold">{activity.title}</p>
-                        <p class="text-xs text-base-content/60">{activity.location}</p>
-                      </div>
-                      {#if hostId && activity.proposerId === hostId}
-                        <button
-                          class="btn btn-ghost btn-xs text-success"
-                          type="button"
-                          aria-label="Edit activity"
-                          on:click|stopPropagation={() => openRejectedActivity(activity)}
-                        >
-                          <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path d="M13.586 3.586a2 2 0 0 1 2.828 2.828l-8.5 8.5a1 1 0 0 1-.414.242l-4 1.333a1 1 0 0 1-1.263-1.263l1.333-4a1 1 0 0 1 .242-.414l8.5-8.5Z" />
-                          </svg>
-                        </button>
-                      {/if}
-                    </div>
-                    <div class="text-xs text-base-content/50">
-                      {activity.startTime ? formatShortDate(activity.startTime) : 'Date TBD'}
-                    </div>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          </section>
-        {/if}
+        <ProposedActivities
+          activities={rejectedActivities}
+          profileId={hostId}
+          onSelect={(activity) => {
+            if (hostId && activity.proposerId === hostId) {
+              openRejectedActivity(activity);
+            }
+          }}
+          showScrollControls={true}
+        />
       {/if}
     </section>
 
@@ -771,6 +696,7 @@
       planId={props.data.plan?.id ?? null}
       modalId="add-activity-modal"
       bind:open={addActivityOpen}
+      on:activityCreated={handleActivityCreated}
     />
 
     <input id="remove-participant-modal" type="checkbox" class="modal-toggle" />

@@ -16,15 +16,15 @@
   </div>
   <div class="card bg-base-100 border border-base-200 shadow-sm">
     <div class="card-body">
-      <p class="text-xs uppercase tracking-wide text-base-content/50">Collected</p>
-      <p class="text-2xl font-semibold text-primary">${collected.toLocaleString()}</p>
-      <progress class="progress progress-primary" value={progressValue} max="100"></progress>
+      <p class="text-xs uppercase tracking-wide text-base-content/50">Your total</p>
+      <p class="text-2xl font-semibold">${perPerson.toLocaleString()}</p>
     </div>
   </div>
   <div class="card bg-base-100 border border-base-200 shadow-sm">
     <div class="card-body">
-      <p class="text-xs uppercase tracking-wide text-base-content/50">Your total</p>
-      <p class="text-2xl font-semibold">${perPerson.toLocaleString()}</p>
+      <p class="text-xs uppercase tracking-wide text-base-content/50">Collected</p>
+      <p class="text-2xl font-semibold text-primary">${collected.toLocaleString()}</p>
+      <progress class="progress progress-primary" value={progressValue} max="100"></progress>
     </div>
   </div>
   <div class="card bg-base-100 border border-base-200 shadow-sm">

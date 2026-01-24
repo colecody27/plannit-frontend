@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { createPlan } from '$lib/api/plans';
   import LocationAutocomplete from '$lib/components/LocationAutocomplete.svelte';
 
   const planTypes = [
-    { id: 'trip', label: 'Trip', description: 'Getaways & vacations' },
-    { id: 'event', label: 'Event', description: 'Parties & meetups' },
-    { id: 'group', label: 'Group Buy', description: 'Shared purchases' }
+    { id: 'trip', label: 'Trip', description: 'Getaways & vacations', disabled: false },
+    { id: 'event', label: 'Event', description: 'Parties & meetups', disabled: true },
+    { id: 'group', label: 'Group Buy', description: 'Shared purchases', disabled: true }
   ];
 
   let selectedType = 'trip';
@@ -15,6 +15,8 @@
   let planName = '';
   let planDescription = '';
   let planDeadline = '';
+  let deadlineOpen = false;
+  let deadlineContainer: HTMLDivElement | null = null;
   let startDay = '';
   let endDay = '';
   let planLocation = '';
@@ -28,6 +30,20 @@
 
   onMount(async () => {
     await import('cally');
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!deadlineOpen || !deadlineContainer) {
+        return;
+      }
+      const target = event.target as Node | null;
+      if (target && deadlineContainer.contains(target)) {
+        return;
+      }
+      deadlineOpen = false;
+    };
+    window.addEventListener('click', handleClickOutside);
+    onDestroy(() => {
+      window.removeEventListener('click', handleClickOutside);
+    });
   });
 
   const formatDate = (date: Date) => {
@@ -48,6 +64,7 @@
   const normalizeCalendarDate = (value: Date) =>
     new Date(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate());
   const minSelectableDate = formatDate(new Date());
+  $: deadlineMaxDate = startDay || undefined;
 
   const handleRangeStart = (event: CustomEvent<Date>) => {
     const today = startOfDay(new Date());
@@ -75,6 +92,14 @@
     endDay = formatDate(selectedEnd);
   };
 
+  const handleDeadlineSelect = (event: CustomEvent<Date>) => {
+    const selected = normalizeCalendarDate(event.detail);
+    planDeadline = formatDate(selected);
+    deadlineOpen = false;
+  };
+
+
+
   const handleSubmit = async () => {
     errorMessage = '';
     const trimmedName = planName.trim();
@@ -84,6 +109,16 @@
     }
     if (dateError) {
       return;
+    }
+    if (planDeadline && startDay) {
+      const parsedDeadline = parseLocalDate(planDeadline);
+      const parsedStart = parseLocalDate(startDay);
+      const deadlineDate = parsedDeadline ? startOfDay(parsedDeadline) : null;
+      const startDate = parsedStart ? startOfDay(parsedStart) : null;
+      if (deadlineDate && startDate && deadlineDate > startDate) {
+        dateError = 'Commitment deadline must be on or before the start day.';
+        return;
+      }
     }
     if (startDay) {
       const today = startOfDay(new Date());
@@ -137,11 +172,19 @@
       {#each planTypes as type}
         <button
           class={`rounded-2xl border p-4 text-left transition ${
-            selectedType === type.id
-              ? 'border-primary bg-primary/5 shadow-sm'
-              : 'border-base-200 hover:border-primary/60'
+            type.disabled
+              ? 'border-base-200 bg-base-100/70 text-base-content/40 cursor-not-allowed'
+              : selectedType === type.id
+                ? 'border-primary bg-primary/5 shadow-sm'
+                : 'border-base-200 hover:border-primary/60'
           }`}
-          on:click={() => (selectedType = type.id)}
+          disabled={type.disabled}
+          type="button"
+          on:click={() => {
+            if (!type.disabled) {
+              selectedType = type.id;
+            }
+          }}
         >
           <div class="h-10 w-10 rounded-2xl bg-base-200 mb-3"></div>
           <h3 class="font-semibold">{type.label}</h3>
@@ -227,11 +270,53 @@
           />
         </label>
       </div>
-      <label class="form-control">
+      <div class="form-control" bind:this={deadlineContainer}>
         <span class="label-text">Commitment deadline</span>
         <span class="text-xs text-base-content/60">When do people need to commit by?</span>
-        <input class="input input-bordered" type="date" bind:value={planDeadline} />
-      </label>
+        <div class="relative mt-2">
+          <input
+            class="input input-bordered w-full"
+            type="text"
+            placeholder="Select deadline"
+            value={planDeadline}
+            readonly
+            on:click={() => (deadlineOpen = !deadlineOpen)}
+          />
+          {#if deadlineOpen}
+            <div
+              class="absolute z-20 mt-2 w-fit max-w-full rounded-2xl border border-base-200 bg-base-100 p-3 shadow-lg"
+              on:click|stopPropagation
+            >
+              <calendar-range
+                months={1}
+                min={minSelectableDate}
+                max={deadlineMaxDate}
+                page-by="single"
+                on:rangestart={handleDeadlineSelect}
+                on:rangeend={handleDeadlineSelect}
+              >
+                <calendar-month></calendar-month>
+              </calendar-range>
+              <div class="mt-3 flex items-center justify-between">
+                <button
+                  class="btn btn-ghost btn-sm"
+                  type="button"
+                  on:click={() => (planDeadline = '')}
+                >
+                  Clear
+                </button>
+                <button
+                  class="btn btn-outline btn-sm"
+                  type="button"
+                  on:click={() => (deadlineOpen = false)}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          {/if}
+        </div>
+      </div>
       {#if showBuyIn}
         <div class="flex items-center justify-between rounded-2xl border border-base-200 p-4">
           <div>

@@ -32,6 +32,13 @@ const proxyRequest: RequestHandler = async ({ request, url, params, cookies }) =
     duplex: hasBody ? 'half' : undefined
   } as RequestInit);
 
+  if (response.status === 401) {
+    return new Response(null, {
+      status: 303,
+      headers: { Location: '/' }
+    });
+  }
+
   if (targetPath.startsWith('/auth/callback')) {
     const data = await response.json().catch(() => ({}));
     const token = typeof data?.token === 'string' ? data.token : null;

@@ -7,6 +7,7 @@
   import ItineraryTimeline from '$lib/components/ItineraryTimeline.svelte';
   import ParticipantsCard from '$lib/components/ParticipantsCard.svelte';
   import AddActivityModal from '$lib/components/AddActivityModal.svelte';
+  import ProposedActivities from '$lib/components/ProposedActivities.svelte';
   import { formatShortDate } from '$lib/models/plan';
   import { page } from '$app/stores';
 
@@ -44,6 +45,11 @@
     );
   };
 
+  const handleActivityCreated = (event: CustomEvent<import('$lib/types').Activity>) => {
+    const created = event.detail;
+    activities = [created, ...activities];
+  };
+
   const userTotalCost = $derived.by(() => {
     const profileId = $page.data?.profile?.id;
     if (!profileId) {
@@ -64,8 +70,23 @@
     }, 0)
   );
 
+  const rejectedActivities = $derived.by(() =>
+    activities.filter((activity) => activity.status?.toLowerCase() === 'rejected')
+  );
+
   const venmoHandle = plan?.organizer?.venmo ?? null;
-  const venmoLink = venmoHandle ? `https://venmo.com/u/${venmoHandle}` : null;
+  const amountDue = userTotalCost;
+  const venmoLink = venmoHandle
+    ? (() => {
+        const url = new URL('https://account.venmo.com/pay');
+        url.searchParams.set('audience', 'private');
+        url.searchParams.set('amount', amountDue.toFixed(2));
+        url.searchParams.set('note', `Plannit plan: ${plan?.title ?? 'Plan'}`);
+        url.searchParams.set('recipients', venmoHandle);
+        url.searchParams.set('txn', 'pay');
+        return url.toString();
+      })()
+    : null;
 
   const formatTimeline = (start?: Date | null, end?: Date | null) => {
     if (start && end) {
@@ -126,6 +147,7 @@
           title={plan.title}
           dateRange={formatTimeline(plan.startDay ?? null, plan.endDay ?? null)}
           location={plan.location}
+          planStatus={plan.status}
           showFinalize={false}
           showInvite={false}
           extraActionLabel="Leave Plan"
@@ -182,6 +204,7 @@
           <div class="space-y-6">
             <ItineraryTimeline
               activities={activities}
+              planStatus={plan.status}
               addTargetId="add-activity-modal"
               emphasizeAdd={true}
               on:activityUpdate={handleActivityUpdate}
@@ -192,6 +215,11 @@
             <ChatPanel messages={plan.chat} />
           </div>
         </div>
+
+        <ProposedActivities
+          activities={rejectedActivities}
+          profileId={$page.data?.profile?.id ?? null}
+        />
       {/if}
     </section>
 
@@ -204,15 +232,16 @@
             <p class="text-sm text-base-content/60">Organizer</p>
             <p class="font-semibold">{host?.name ?? 'Plan Organizer'}</p>
             {#if venmoHandle}
-              <p class="text-sm text-base-content/60">Venmo: {venmoHandle}</p>
-              {#if venmoLink}
-                <p class="text-sm text-base-content/60">
-                  Link:
+              <p class="text-sm text-base-content/60">
+                Venmo:
+                {#if venmoLink}
                   <a class="link link-hover text-primary" href={venmoLink} target="_blank" rel="noreferrer">
-                    {venmoLink}
+                    {venmoHandle}
                   </a>
-                </p>
-              {/if}
+                {:else}
+                  {venmoHandle}
+                {/if}
+              </p>
               <button class="btn btn-xs btn-outline mt-3" on:click={copyVenmoHandle}>
                 {copiedVenmo ? 'Handle copied' : 'Copy Venmo handle'}
               </button>
@@ -254,6 +283,7 @@
       planId={plan?.id ?? null}
       modalId="add-activity-modal"
       bind:open={addActivityOpen}
+      on:activityCreated={handleActivityCreated}
     />
   </main>
 </div>

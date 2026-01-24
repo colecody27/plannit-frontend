@@ -9,7 +9,7 @@
 
   const props = $props();
   const profileId = props.data.profile?.id ?? null;
-  let activeTab = $state<'hosting' | 'invited' | 'past'>('hosting');
+  let activeTab = $state<'all' | 'hosting' | 'invited' | 'past'>('all');
   let searchTerm = $state('');
   let dateSort = $state<'asc' | 'desc'>('asc');
   let statusFilter = $state('all');
@@ -63,7 +63,10 @@
     if (activeTab === 'past') {
       return pastPlans;
     }
-    return hostingPlans;
+    if (activeTab === 'hosting') {
+      return hostingPlans;
+    }
+    return props.data.plans;
   });
 
   const matchesSearch = (plan: typeof props.data.plans[number]) => {
@@ -119,6 +122,13 @@
       {/if}
       <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div class="tabs tabs-bordered">
+          <button
+            class={`tab ${activeTab === 'all' ? 'tab-active' : ''}`}
+            type="button"
+            on:click={() => (activeTab = 'all')}
+          >
+            All ({props.data.plans.length})
+          </button>
           <button
             class={`tab ${activeTab === 'hosting' ? 'tab-active' : ''}`}
             type="button"

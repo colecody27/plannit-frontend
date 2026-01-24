@@ -5,6 +5,7 @@
   export let showFinalize = true;
   export let showInvite = true;
   export let showMeta = true;
+  export let planStatus: 'active' | 'locked' | 'confirmed' | string | null = null;
   export let finalizeLabel = 'Finalize Plan';
   export let finalizeDisabled = false;
   export let onFinalize: (() => void) | null = null;
@@ -18,12 +19,17 @@
 
   $: extraActionVariantClass =
     extraActionVariant === 'error' ? 'btn-error' : `btn-${extraActionVariant}`;
+  $: statusLabel =
+    planStatus?.toLowerCase() === 'locked'
+      ? 'Payment Phase'
+      : planStatus?.toLowerCase() === 'confirmed'
+        ? 'Party Time'
+        : 'Planning Phase';
 </script>
 
 <div class="space-y-4">
   <div class="flex flex-wrap items-center gap-3">
-    <span class="badge badge-success">Planning Phase</span>
-    <span class="badge badge-outline">Draft</span>
+    <span class="badge badge-success">{statusLabel}</span>
   </div>
   <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
     <div>

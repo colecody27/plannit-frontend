@@ -1,19 +1,24 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import { apiFetch } from '$lib/api/client';
   import { invalidate } from '$app/navigation';
   import LocationAutocomplete from '$lib/components/LocationAutocomplete.svelte';
+  import type { Activity } from '$lib/types';
+  import type { ApiActivity, ApiResponse } from '$lib/api/types';
+  import { mapActivityFromApi } from '$lib/models/plan';
 
   export let open = false;
   export let planId: string | null = null;
   export let modalId = 'add-activity-modal';
+
+  const dispatch = createEventDispatcher<{ activityCreated: Activity }>();
 
   let activityName = '';
   let activityLocation = '';
   let activityLink = '';
   let activityDetails = '';
   let activityCost = '';
-  let activityCostIsPerPerson = false;
+  let activityCostIsPerPerson = true;
   let activityStartDay = '';
   let activityEndDay = '';
   let isAllDay = false;
@@ -95,7 +100,7 @@
     activityLink = '';
     activityDetails = '';
     activityCost = '';
-    activityCostIsPerPerson = false;
+    activityCostIsPerPerson = true;
     activityStartDay = '';
     activityEndDay = '';
     isAllDay = false;
@@ -155,7 +160,9 @@
         isAllDay ? '23:59' : activityEndTime || '17:00'
       );
 
-      await apiFetch(`/plan/${planId}/activity`, {
+      const response = await apiFetch<ApiResponse<ApiActivity> | Activity | null>(
+        `/plan/${planId}/activity`,
+        {
         method: 'POST',
         body: JSON.stringify({
           name: trimmedName,
@@ -167,10 +174,24 @@
           start_time: startTime,
           end_time: endTime
         })
-      });
+        }
+      );
 
-      await invalidate(`/api/plan/${planId}`);
+      const created =
+        response && typeof response === 'object' && 'data' in response
+          ? mapActivityFromApi((response as ApiResponse<ApiActivity>).data, 0)
+          : response && typeof response === 'object' && 'title' in response
+            ? (response as Activity)
+            : null;
+      if (created) {
+        dispatch('activityCreated', created);
+      }
       open = false;
+      const modalInput = document.getElementById(modalId) as HTMLInputElement | null;
+      if (modalInput) {
+        modalInput.checked = false;
+      }
+      await invalidate(`/api/plan/${planId}`);
       resetActivityForm();
     } catch (error) {
       activityError = error instanceof Error ? error.message : 'Unable to save activity.';
@@ -275,10 +296,31 @@
           />
         </div>
       </label>
-      <label class="label cursor-pointer justify-start gap-3">
-        <input type="checkbox" class="checkbox checkbox-sm" bind:checked={activityCostIsPerPerson} />
-        <span class="label-text">Cost is per person</span>
-      </label>
+      <div class="space-y-2">
+        <span class="label-text">Cost type</span>
+        <div class="flex flex-wrap gap-2">
+          <label class="label cursor-pointer justify-start gap-2 rounded-full border border-base-200 px-3 py-1">
+            <input
+              type="radio"
+              class="radio radio-sm"
+              name={`${modalId}-cost-type`}
+              checked={activityCostIsPerPerson}
+              on:change={() => (activityCostIsPerPerson = true)}
+            />
+            <span class="label-text text-sm">Per person</span>
+          </label>
+          <label class="label cursor-pointer justify-start gap-2 rounded-full border border-base-200 px-3 py-1">
+            <input
+              type="radio"
+              class="radio radio-sm"
+              name={`${modalId}-cost-type`}
+              checked={!activityCostIsPerPerson}
+              on:change={() => (activityCostIsPerPerson = false)}
+            />
+            <span class="label-text text-sm">Total cost</span>
+          </label>
+        </div>
+      </div>
       <label class="form-control">
         <span class="label-text">Details</span>
         <textarea

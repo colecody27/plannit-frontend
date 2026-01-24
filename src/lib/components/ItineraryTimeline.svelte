@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { Activity } from '$lib/types';
-  import type { ApiActivity, ApiResponse } from '$lib/api/types';
-  import { formatActivityTime, formatTimeRange, mapActivityFromApi } from '$lib/models/plan';
+  import type { ApiActivity, ApiPlan, ApiResponse } from '$lib/api/types';
+  import type { PlanDetail } from '$lib/types';
+  import { formatActivityTime, formatTimeRange, mapActivityFromApi, mapPlanDetailFromApi } from '$lib/models/plan';
   import { apiFetch } from '$lib/api/client';
   import { page } from '$app/stores';
   import { invalidate } from '$app/navigation';
@@ -9,6 +10,7 @@
   import { createEventDispatcher } from 'svelte';
 
   const props = $props();
+  const canAddActivities = $derived.by(() => props.planStatus?.toLowerCase() === 'active');
   const dispatch = createEventDispatcher<{ activityUpdate: Activity }>();
 
   let activities = $state<Activity[]>(props.activities ?? []);
@@ -59,9 +61,13 @@
 
   const isApiResponse = (value: unknown): value is ApiResponse<ApiActivity> =>
     Boolean(value && typeof value === 'object' && 'data' in value);
+  const isPlanResponse = (value: unknown): value is ApiResponse<ApiPlan> =>
+    Boolean(value && typeof value === 'object' && 'data' in value && value.data && typeof value.data === 'object');
 
   const isActivity = (value: unknown): value is Activity =>
     Boolean(value && typeof value === 'object' && 'id' in value && 'title' in value);
+  const isPlanDetail = (value: unknown): value is PlanDetail =>
+    Boolean(value && typeof value === 'object' && 'activities' in value);
 
   const hasVoted = (activity: Activity) => {
     const profileId = $page.data?.profile?.id;
@@ -210,17 +216,24 @@
 
     isVoteSubmitting = true;
     try {
-      const response = await apiFetch<ApiResponse<ApiActivity> | Activity>(
+      const response = await apiFetch<ApiResponse<ApiActivity> | ApiResponse<ApiPlan> | Activity | PlanDetail>(
         `/plan/${planId}/activity/${activity.id}/vote`,
         { method: 'POST' }
       );
-      const updatedActivity = isApiResponse(response)
-        ? mapActivityFromApi(response.data, 0)
-        : isActivity(response)
-          ? response
-          : null;
-      if (updatedActivity) {
-        updateActivity(updatedActivity);
+      if (isPlanResponse(response)) {
+        const plan = mapPlanDetailFromApi(response.data);
+        activities = plan.activities.map(normalizeActivity);
+      } else if (isPlanDetail(response)) {
+        activities = response.activities.map(normalizeActivity);
+      } else {
+        const updatedActivity = isApiResponse(response)
+          ? mapActivityFromApi(response.data, 0)
+          : isActivity(response)
+            ? response
+            : null;
+        if (updatedActivity) {
+          updateActivity(updatedActivity);
+        }
       }
     } catch (error) {
     } finally {
@@ -281,6 +294,7 @@
     )
   );
   const isRejected = $derived(selectedActivity?.status?.toLowerCase() === 'rejected');
+  const profileId = $derived($page.data?.profile?.id ?? null);
 
   const saveActivity = async () => {
     if (!selectedActivity || isActivitySaving) {
@@ -451,14 +465,14 @@
         </span>
         <h3 class="text-lg font-semibold">Plan Timeline</h3>
       </div>
-      {#if props.addTargetId}
+      {#if props.addTargetId && canAddActivities}
         <label
           class={`btn btn-sm ${props.emphasizeAdd ? 'btn-primary' : 'btn-ghost text-primary'}`}
           for={props.addTargetId}
         >
           + Add Activity
         </label>
-      {:else}
+      {:else if !props.addTargetId}
         <button class={`btn btn-sm ${props.emphasizeAdd ? 'btn-primary' : 'btn-ghost text-primary'}`}>
           + Add Activity
         </button>
@@ -472,11 +486,11 @@
             <div class="h-12 w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl">+</div>
             <h3 class="font-semibold">No activities yet</h3>
             <p class="text-sm text-base-content/60">Start building your itinerary with the first activity.</p>
-            {#if props.addTargetId}
+            {#if props.addTargetId && canAddActivities}
               <label class="btn btn-ghost text-primary" for={props.addTargetId}>
                 Add Activity
               </label>
-            {:else}
+            {:else if !props.addTargetId}
               <button class="btn btn-ghost text-primary" type="button">Add Activity</button>
             {/if}
           </div>
@@ -560,7 +574,9 @@
                               <p class="text-sm text-base-content/60">{activity.location}</p>
                               {#if activity.isProposed}
                                 <p class="text-xs text-base-content/50">
-                                  Proposed by {activity.proposerName ?? 'Guest'}
+                                  Proposed by {activity.proposerId && profileId && activity.proposerId === profileId
+                                    ? 'You'
+                                    : activity.proposerName ?? 'Guest'}
                                 </p>
                               {/if}
                             </div>
@@ -636,7 +652,9 @@
                                       : 'text-primary'
                                   }`}
                                 >
-                                  {group.activity.status}
+                                  {group.activity.status.toLowerCase() === 'confirmed'
+                                    ? 'Committed'
+                                    : group.activity.status}
                                 </span>
                               </div>
                             {/if}
@@ -670,19 +688,19 @@
                               {/if}
                             </div>
                           </div>
-                          {#if group.activity.isProposed}
-                            <button
-                              class={`btn btn-xs ml-auto ${
-                                group.activity.hasVoted
-                                  ? 'btn-outline border-primary text-primary'
-                                  : 'btn-primary'
-                              }`}
-                              on:click|stopPropagation={() => toggleVote(group.activity)}
-                              type="button"
-                            >
-                              {group.activity.hasVoted ? "I'm out" : "I'm in!"}
-                            </button>
-                          {/if}
+                            {#if group.activity.isProposed && group.activity.status?.toLowerCase() !== 'confirmed'}
+                              <button
+                                class={`btn btn-xs ml-auto ${
+                                  group.activity.hasVoted
+                                    ? 'btn-outline border-primary text-primary'
+                                    : 'btn-primary'
+                                }`}
+                                on:click|stopPropagation={() => toggleVote(group.activity)}
+                                type="button"
+                              >
+                                {group.activity.hasVoted ? "I'm out" : "I'm in!"}
+                              </button>
+                            {/if}
                         </div>
                       </div>
                     </div>
@@ -907,7 +925,7 @@
             <div class="text-sm text-base-content/70">
               Who’s in ({selectedActivity?.votes?.length ?? 0})
             </div>
-            {#if selectedActivity?.isProposed}
+            {#if selectedActivity?.isProposed && selectedActivity?.status?.toLowerCase() !== 'confirmed'}
               <button
                 class={`btn ${selectedActivity.hasVoted ? 'btn-outline border-primary text-primary' : 'btn-primary'}`}
                 on:click={() => selectedActivity && toggleVote(selectedActivity)}
@@ -916,7 +934,7 @@
               >
                 {selectedActivity.hasVoted ? "I'm out!" : "I'm in!"}
               </button>
-            {:else}
+            {:else if selectedActivity?.status?.toLowerCase() !== 'confirmed'}
               <button class="btn btn-primary">Join Activity</button>
             {/if}
           </div>

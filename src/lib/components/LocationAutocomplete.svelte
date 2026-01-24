@@ -27,6 +27,7 @@
   let singleInputValue = '';
 
   const normalize = (value: string) => value.trim().toLowerCase();
+  const limitResults = <T,>(items: T[], limit = 5) => items.slice(0, limit);
 
   const resolveCountry = (value: string) => {
     const normalized = normalize(value);
@@ -117,6 +118,18 @@
     selectedCountryCode && selectedStateCode
       ? City.getCitiesOfState(selectedCountryCode, selectedStateCode)
       : [];
+  $: filteredCountries = countryInput ? limitResults(
+    countries.filter((country) => normalize(country.name).includes(normalize(countryInput)))
+  ) : [];
+  $: filteredStates = stateInput ? limitResults(
+    states.filter((state) => normalize(state.name).includes(normalize(stateInput)))
+  ) : [];
+  $: filteredCities = cityInput ? limitResults(
+    cities.filter((city) => normalize(city.name).includes(normalize(cityInput)))
+  ) : [];
+  $: filteredCityOptions = singleInputValue ? limitResults(
+    cityOptions.filter((entry) => normalize(entry.label).includes(normalize(singleInputValue)))
+  ) : [];
 
   const cityOptions = allCities.map((entry) => {
     const stateMatch = State.getStateByCodeAndCountry(entry.stateCode, entry.countryCode);
@@ -237,7 +250,7 @@
       on:change={handleSingleInputChange}
     />
     <datalist id={`${idPrefix}-city-list`}>
-      {#each cityOptions as entry}
+      {#each filteredCityOptions as entry}
         <option value={entry.label}></option>
       {/each}
     </datalist>
@@ -252,7 +265,7 @@
           on:change={handleCountryChange}
         />
         <datalist id={`${idPrefix}-countries`}>
-          {#each countries as country}
+          {#each filteredCountries as country}
             <option value={country.name}></option>
           {/each}
         </datalist>
@@ -267,7 +280,7 @@
           disabled={!selectedCountryCode}
         />
         <datalist id={`${idPrefix}-states`}>
-          {#each states as state}
+          {#each filteredStates as state}
             <option value={state.name}></option>
           {/each}
         </datalist>
@@ -282,7 +295,7 @@
           disabled={!selectedStateCode}
         />
         <datalist id={`${idPrefix}-cities`}>
-          {#each cities as city}
+          {#each filteredCities as city}
             <option value={city.name}></option>
           {/each}
         </datalist>
