@@ -104,6 +104,20 @@ export const mapActivityFromApi = (activity: ApiActivity, index = 0): Activity =
     cost: perPerson,
     costIsPerPerson: isPerPerson,
     costTotal: totalCost,
+    payments: Array.isArray(activity.payments)
+      ? activity.payments
+          .map((entry) => {
+            if (typeof entry === 'string') {
+              return entry;
+            }
+            if (entry && typeof entry === 'object') {
+              const data = entry as Record<string, unknown>;
+              return typeof data.id === 'string' ? data.id : null;
+            }
+            return null;
+          })
+          .filter((id): id is string => Boolean(id))
+      : undefined,
     status:
       activity.status?.toLowerCase() === 'accepted'
         ? 'Confirmed'
@@ -151,7 +165,7 @@ export const mapMessageFromApi = (message: ApiMessage, index = 0): ChatMessage =
 export const mapPlanFromApi = (plan: ApiPlan, index = 0): Plan => {
   const goal = plan.costs?.total ?? 0;
   const perPerson = plan.costs?.per_person ?? 0;
-  const raised = (plan as Record<string, any>)?.costs?.raised ?? 0;
+  const raised = plan.costs?.collected ?? (plan as Record<string, any>)?.costs?.raised ?? 0;
   const locationParts = [plan.city, plan.state, plan.country].filter(Boolean);
   const resolvedLocation =
     locationParts.length > 0 ? locationParts.join(', ') : plan.location ?? 'Location TBD';

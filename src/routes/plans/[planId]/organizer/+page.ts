@@ -1,4 +1,5 @@
 import type { PageLoad } from './$types';
+import { redirect, isRedirect } from '@sveltejs/kit';
 import type { ApiPlan, ApiResponse } from '$lib/api/types';
 import type { PlanDetail } from '$lib/types';
 import { mapPlanDetailFromApi } from '$lib/models/plan';
@@ -10,6 +11,9 @@ export const load: PageLoad = async ({ fetch, params }) => {
 
   try {
     const response = await fetch(`/api/plan/${planId}`);
+    if (response.status === 401 || response.status === 303) {
+      throw redirect(303, '/');
+    }
     if (!response.ok) {
       throw new Error('Unable to load plan.');
     }
@@ -21,6 +25,9 @@ export const load: PageLoad = async ({ fetch, params }) => {
       statusMessage = 'Plan not available.';
     }
   } catch (error) {
+    if (isRedirect(error)) {
+      throw error;
+    }
     statusMessage = 'Unable to load plan right now.';
   }
 

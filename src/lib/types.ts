@@ -26,6 +26,7 @@ export interface Activity {
   cost?: number;
   costIsPerPerson?: boolean;
   costTotal?: number;
+  payments?: string[];
   status?: string;
   options?: ActivityOption[];
   image?: string;

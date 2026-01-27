@@ -34,8 +34,6 @@
                 <span class="badge badge-success badge-xs">Organizer</span>
               {:else if person.status === 'paid'}
                 <span class="text-xs text-primary">Paid</span>
-              {:else}
-                <span class="text-xs text-warning">Pending</span>
               {/if}
             </div>
           </div>

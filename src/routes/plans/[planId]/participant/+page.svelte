@@ -8,15 +8,19 @@
   import ParticipantsCard from '$lib/components/ParticipantsCard.svelte';
   import AddActivityModal from '$lib/components/AddActivityModal.svelte';
   import ProposedActivities from '$lib/components/ProposedActivities.svelte';
+  import PaymentSuccessModal from '$lib/components/PaymentSuccessModal.svelte';
   import { formatShortDate } from '$lib/models/plan';
+  import { apiFetch } from '$lib/api/client';
+  import { invalidate } from '$app/navigation';
   import { page } from '$app/stores';
 
   const props = $props();
   const plan = props.data.plan;
   const statusMessage = props.data.statusMessage ?? '';
   const planLocked = (plan?.status ?? '').toLowerCase() === 'locked';
-  let copiedVenmo = false;
-  let addActivityOpen = false;
+  let copiedVenmo = $state(false);
+  let addActivityOpen = $state(false);
+  let paymentSuccessOpen = $state(false);
 
   const host =
     plan?.organizer ??
@@ -45,6 +49,10 @@
     );
   };
 
+  const handlePlanUpdate = (event: CustomEvent<import('$lib/types').Activity[]>) => {
+    activities = event.detail;
+  };
+
   const handleActivityCreated = (event: CustomEvent<import('$lib/types').Activity>) => {
     const created = event.detail;
     activities = [created, ...activities];
@@ -59,7 +67,10 @@
       const hasVote = Array.isArray(activity.votes)
         ? activity.votes.some((vote) => vote.id === profileId)
         : false;
-      return hasVote ? sum + (activity.cost ?? 0) : sum;
+      const hasPaid = Array.isArray(activity.payments)
+        ? activity.payments.includes(profileId)
+        : false;
+      return hasVote && !hasPaid ? sum + (activity.cost ?? 0) : sum;
     }, 0);
   });
 
@@ -134,6 +145,28 @@
       copiedVenmo = false;
     }, 2000);
   };
+
+  const handleMarkPaid = async () => {
+    if (!plan?.id) {
+      return;
+    }
+    try {
+      await apiFetch(`/plan/${plan.id}/pay`, { method: 'PUT' });
+      console.log('Payment success modal opening');
+      paymentSuccessOpen = true;
+      setTimeout(() => {
+        console.log('Payment success modal closing');
+        paymentSuccessOpen = false;
+        const paymentModal = document.getElementById('payment-modal') as HTMLInputElement | null;
+        if (paymentModal) {
+          paymentModal.checked = false;
+        }
+        invalidate(`/api/plan/${plan.id}`);
+      }, 1500);
+    } catch (error) {
+      // TODO: surface error if needed
+    }
+  };
 </script>
 
 <div>
@@ -186,10 +219,17 @@
           <div class="card bg-base-100 border border-base-200 shadow-sm">
             <div class="card-body flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <h3 class="text-lg font-semibold">Plan locked - payment required</h3>
-                <p class="text-sm text-base-content/60">Complete your buy-in to confirm your spot.</p>
+                {#if userTotalCost === 0}
+                  <h3 class="text-lg font-semibold">You’re all settled!</h3>
+                  <p class="text-sm text-base-content/60">No payment is due right now.</p>
+                {:else}
+                  <h3 class="text-lg font-semibold">Plan locked - payment required</h3>
+                  <p class="text-sm text-base-content/60">Complete your buy-in to confirm your spot.</p>
+                {/if}
               </div>
-              <label class="btn btn-primary" for="payment-modal">Pay Now</label>
+              {#if userTotalCost > 0}
+                <label class="btn btn-primary" for="payment-modal">Pay Now</label>
+              {/if}
             </div>
           </div>
         {/if}
@@ -208,6 +248,7 @@
               addTargetId="add-activity-modal"
               emphasizeAdd={true}
               on:activityUpdate={handleActivityUpdate}
+              on:planUpdate={handlePlanUpdate}
             />
           </div>
           <div class="space-y-6">
@@ -252,17 +293,23 @@
           <div class="rounded-2xl border border-base-200 p-4">
             <p class="text-sm text-base-content/60">Amount due</p>
             <p class="text-2xl font-semibold">
-              ${plan?.perPerson?.toFixed(2) ?? '0.00'}
+              ${userTotalCost.toFixed(2)}
             </p>
           </div>
         </div>
         <div class="modal-action">
           <label for="payment-modal" class="btn btn-outline">Close</label>
-          <label for="payment-modal" class="btn btn-primary">Mark as Paid</label>
+          <button class="btn btn-primary" type="button" on:click={handleMarkPaid}>
+            Mark as Paid
+          </button>
         </div>
       </div>
       <label class="modal-backdrop" for="payment-modal">Close</label>
     </div>
+
+    <PaymentSuccessModal
+      open={paymentSuccessOpen}
+    />
 
     <input id="leave-plan-modal" type="checkbox" class="modal-toggle" />
     <div class="modal" role="dialog">
@@ -281,6 +328,8 @@
 
     <AddActivityModal
       planId={plan?.id ?? null}
+      planStartDay={plan?.startDay ?? null}
+      planEndDay={plan?.endDay ?? null}
       modalId="add-activity-modal"
       bind:open={addActivityOpen}
       on:activityCreated={handleActivityCreated}

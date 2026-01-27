@@ -3,6 +3,7 @@ export type ApiPlanType = 'trip' | 'event' | 'group_purchase';
 export interface ApiPlanCosts {
   total?: number;
   per_person?: number;
+  collected?: number;
 }
 
 export interface ApiActivity {
@@ -14,6 +15,7 @@ export interface ApiActivity {
     is_per_person?: boolean;
     total_cost?: number;
   };
+  payments?: unknown[];
   start_time?: string | null;
   end_time?: string | null;
   proposer_id?: string;

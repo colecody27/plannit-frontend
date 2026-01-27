@@ -25,6 +25,11 @@ export const apiFetch = async <T>(
     headers
   });
 
+  if (response.status === 401 && browser) {
+    window.location.href = '/';
+    return null as T;
+  }
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Request failed' }));
     const requestError = new Error(error.message ?? 'Request failed');

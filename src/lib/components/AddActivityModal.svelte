@@ -9,6 +9,8 @@
 
   export let open = false;
   export let planId: string | null = null;
+  export let planStartDay: Date | null = null;
+  export let planEndDay: Date | null = null;
   export let modalId = 'add-activity-modal';
 
   const dispatch = createEventDispatcher<{ activityCreated: Activity }>();
@@ -58,13 +60,23 @@
   };
   const normalizeCalendarDate = (value: Date) =>
     new Date(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate());
-  const minSelectableDate = formatDate(new Date());
+  const todayMinDate = formatDate(new Date());
+  $: minSelectableDate = planStartDay ? formatDate(planStartDay) : todayMinDate;
+  $: maxSelectableDate = planEndDay ? formatDate(planEndDay) : undefined;
 
   const handleActivityRangeStart = (event: CustomEvent<Date>) => {
     const today = startOfDay(new Date());
     const selected = startOfDay(normalizeCalendarDate(event.detail));
     if (selected < today) {
       activityDateError = 'Start date cannot be in the past.';
+      return;
+    }
+    if (planStartDay && selected < startOfDay(planStartDay)) {
+      activityDateError = 'Start date must be within the plan dates.';
+      return;
+    }
+    if (planEndDay && selected > startOfDay(planEndDay)) {
+      activityDateError = 'Start date must be within the plan dates.';
       return;
     }
     activityDateError = '';
@@ -81,6 +93,14 @@
         activityDateError = 'End date cannot be before the start date.';
         return;
       }
+    }
+    if (planStartDay && selectedEnd < startOfDay(planStartDay)) {
+      activityDateError = 'End date must be within the plan dates.';
+      return;
+    }
+    if (planEndDay && selectedEnd > startOfDay(planEndDay)) {
+      activityDateError = 'End date must be within the plan dates.';
+      return;
     }
     activityDateError = '';
     activityEndDay = formatDate(selectedEnd);
@@ -216,6 +236,7 @@
           <calendar-range
             months={1}
             min={minSelectableDate}
+            max={maxSelectableDate}
             page-by="single"
             on:rangestart={handleActivityRangeStart}
             on:rangeend={handleActivityRangeEnd}

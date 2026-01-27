@@ -278,6 +278,10 @@
     );
   };
 
+  const handlePlanUpdate = (event: CustomEvent<Activity[]>) => {
+    activities = event.detail;
+  };
+
   const handleActivityCreated = (event: CustomEvent<Activity>) => {
     const created = event.detail;
     activities = [created, ...activities];
@@ -417,7 +421,10 @@
       const hasVote = Array.isArray(activity.votes)
         ? activity.votes.some((vote) => vote.id === profileId)
         : false;
-      return hasVote ? sum + (activity.cost ?? 0) : sum;
+      const hasPaid = Array.isArray(activity.payments)
+        ? activity.payments.includes(profileId)
+        : false;
+      return hasVote && !hasPaid ? sum + (activity.cost ?? 0) : sum;
     }, 0);
   });
 
@@ -629,6 +636,7 @@
               emphasizeAdd={true}
               bind:this={itineraryTimeline}
               on:activityUpdate={handleActivityUpdate}
+              on:planUpdate={handlePlanUpdate}
             />
           </div>
           <div class="space-y-6">
@@ -694,6 +702,8 @@
 
     <AddActivityModal
       planId={props.data.plan?.id ?? null}
+      planStartDay={props.data.plan?.startDay ?? null}
+      planEndDay={props.data.plan?.endDay ?? null}
       modalId="add-activity-modal"
       bind:open={addActivityOpen}
       on:activityCreated={handleActivityCreated}

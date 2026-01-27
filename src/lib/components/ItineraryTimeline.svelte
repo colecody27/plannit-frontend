@@ -11,7 +11,7 @@
 
   const props = $props();
   const canAddActivities = $derived.by(() => props.planStatus?.toLowerCase() === 'active');
-  const dispatch = createEventDispatcher<{ activityUpdate: Activity }>();
+  const dispatch = createEventDispatcher<{ activityUpdate: Activity; planUpdate: Activity[] }>();
 
   let activities = $state<Activity[]>(props.activities ?? []);
   let activityModalOpen = $state(false);
@@ -222,9 +222,13 @@
       );
       if (isPlanResponse(response)) {
         const plan = mapPlanDetailFromApi(response.data);
-        activities = plan.activities.map(normalizeActivity);
+        const nextActivities = plan.activities.map(normalizeActivity);
+        activities = nextActivities;
+        dispatch('planUpdate', nextActivities);
       } else if (isPlanDetail(response)) {
-        activities = response.activities.map(normalizeActivity);
+        const nextActivities = response.activities.map(normalizeActivity);
+        activities = nextActivities;
+        dispatch('planUpdate', nextActivities);
       } else {
         const updatedActivity = isApiResponse(response)
           ? mapActivityFromApi(response.data, 0)
