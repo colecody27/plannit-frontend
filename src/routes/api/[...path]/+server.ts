@@ -2,8 +2,11 @@ import { PUBLIC_API_BASE_URL } from '$env/static/public';
 import { PRIVATE_API_BASE_URL } from '$env/static/private';
 import type { RequestHandler } from '@sveltejs/kit';
 
-const BACKEND_BASE_URL = (PRIVATE_API_BASE_URL || PUBLIC_API_BASE_URL || 'http://127.0.0.1:5001')
-  .replace(/\/+$/, '');
+const normalizeBackendUrl = (value: string) =>
+  value.replace(/localhost/g, '127.0.0.1').replace(/\/+$/, '');
+const BACKEND_BASE_URL = normalizeBackendUrl(
+  PRIVATE_API_BASE_URL || PUBLIC_API_BASE_URL || 'http://127.0.0.1:5001'
+);
 
 const proxyRequest: RequestHandler = async ({ request, url, params, cookies }) => {
   const targetPath = params.path ? `/${params.path}` : '';
@@ -15,7 +18,7 @@ const proxyRequest: RequestHandler = async ({ request, url, params, cookies }) =
   headers.delete('host');
   headers.delete('content-length');
   if (!headers.has('authorization')) {
-    const token = cookies.get('plannit-token');
+    const token = cookies.get('access_token_cookie');
     if (token) {
       headers.set('authorization', `Bearer ${token}`);
     }
@@ -38,7 +41,7 @@ const proxyRequest: RequestHandler = async ({ request, url, params, cookies }) =
     if (token) {
       const redirectTo =
         typeof data?.redirect === 'string' && data.redirect.trim() ? data.redirect : '/dashboard';
-      cookies.set('plannit-token', token, {
+      cookies.set('access_token_cookie', token, {
         path: '/',
         httpOnly: true,
         sameSite: 'lax',
@@ -59,7 +62,7 @@ const proxyRequest: RequestHandler = async ({ request, url, params, cookies }) =
   }
 
   if (targetPath.startsWith('/auth/logout')) {
-    cookies.delete('plannit-token', { path: '/' });
+    cookies.delete('access_token_cookie', { path: '/' });
   }
 
   return new Response(response.body, {

@@ -8,14 +8,14 @@ export const initAuth = () => {
     return;
   }
 
-  const stored = localStorage.getItem('plannit-token');
+  const stored = localStorage.getItem('access_token_cookie');
   token.set(stored ?? null);
 
   token.subscribe((value) => {
     if (value) {
-      localStorage.setItem('plannit-token', value);
+      localStorage.setItem('access_token_cookie', value);
     } else {
-      localStorage.removeItem('plannit-token');
+      localStorage.removeItem('access_token_cookie');
     }
   });
 };

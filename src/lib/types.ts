@@ -79,6 +79,7 @@ export interface PlanDetail extends Plan {
 
 export interface ChatMessage {
   id: string;
+  senderId?: string;
   name: string;
   message: string;
   timestamp: Date | null;

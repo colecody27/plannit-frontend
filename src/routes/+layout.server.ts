@@ -6,7 +6,7 @@ import { mapUserProfileFromApi } from '$lib/models/user';
 const PROFILE_PATH = '/api/user';
 
 export const load: LayoutServerLoad = async ({ fetch, cookies }) => {
-  const token = cookies.get('plannit-token');
+  const token = cookies.get('access_token_cookie');
   if (!token) {
     return { profile: null };
   }

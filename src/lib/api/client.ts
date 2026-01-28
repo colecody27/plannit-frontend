@@ -6,7 +6,7 @@ const getToken = () => {
   if (!browser) {
     return null;
   }
-  return localStorage.getItem('plannit-token');
+  return localStorage.getItem('access_token_cookie');
 };
 
 export const apiFetch = async <T>(

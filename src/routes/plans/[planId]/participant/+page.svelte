@@ -10,6 +10,8 @@
   import ProposedActivities from '$lib/components/ProposedActivities.svelte';
   import PaymentSuccessModal from '$lib/components/PaymentSuccessModal.svelte';
   import { formatShortDate } from '$lib/models/plan';
+  import { onDestroy, onMount } from 'svelte';
+  import { joinPlan, onMessage, sendMessage } from '$lib/socket';
   import { apiFetch } from '$lib/api/client';
   import { invalidate } from '$app/navigation';
   import { page } from '$app/stores';
@@ -37,9 +39,40 @@
     : 'H';
 
   let activities = $state(plan?.activities ?? []);
+  let chatMessages = $state(plan?.chat ?? []);
+  let chatSeeded = $state(false);
 
   $effect(() => {
     activities = plan?.activities ?? [];
+  });
+
+  $effect(() => {
+    if (chatSeeded) {
+      return;
+    }
+    const profileId = $page.data?.profile?.id;
+    chatMessages = (plan?.chat ?? []).map((message) => ({
+      ...message,
+      isSelf: profileId ? message.senderId === profileId : message.isSelf
+    }));
+    chatSeeded = true;
+  });
+
+  $effect(() => {
+    const profileId = $page.data?.profile?.id;
+    if (!profileId) {
+      return;
+    }
+    const needsUpdate = chatMessages.some(
+      (message) => message.senderId && message.isSelf !== (message.senderId === profileId)
+    );
+    if (!needsUpdate) {
+      return;
+    }
+    chatMessages = chatMessages.map((message) => ({
+      ...message,
+      isSelf: message.senderId === profileId
+    }));
   });
 
   const handleActivityUpdate = (event: CustomEvent<import('$lib/types').Activity>) => {
@@ -52,6 +85,54 @@
   const handlePlanUpdate = (event: CustomEvent<import('$lib/types').Activity[]>) => {
     activities = event.detail;
   };
+
+  const appendChatMessage = (payload: {
+    sender_id: string;
+    sender_name?: string;
+    text: string;
+    date: string;
+  }) => {
+    const next = {
+      id: `${payload.sender_id ?? 'sender'}-${payload.date}`,
+      senderId: payload.sender_id ?? undefined,
+      name: payload.sender_name ?? 'Participant',
+      message: payload.text,
+      timestamp: payload.date ? new Date(payload.date) : null,
+      isSelf: payload.sender_id === ($page.data?.profile?.id ?? '')
+    };
+    chatMessages = [...chatMessages, next];
+  };
+
+  const handleSendMessage = async (text: string) => {
+    if (!plan?.id) {
+      return;
+    }
+    console.log('Participant chat send', { planId: plan.id, text });
+    const response = await sendMessage(plan.id, text);
+    console.log('Participant chat response', response);
+    if (response) {
+      appendChatMessage(response);
+    }
+  };
+
+  let unsubscribeMessages = () => {};
+  let chatSubscribed = $state(false);
+  $effect(() => {
+    if (chatSubscribed) {
+      return;
+    }
+    const planId = plan?.id;
+    if (!planId) {
+      return;
+    }
+    joinPlan(planId);
+    unsubscribeMessages = onMessage(appendChatMessage);
+    chatSubscribed = true;
+  });
+
+  onDestroy(() => {
+    unsubscribeMessages();
+  });
 
   const handleActivityCreated = (event: CustomEvent<import('$lib/types').Activity>) => {
     const created = event.detail;
@@ -183,11 +264,6 @@
           planStatus={plan.status}
           showFinalize={false}
           showInvite={false}
-          extraActionLabel="Leave Plan"
-          extraActionHref="#"
-          extraActionVariant="ghost"
-          extraActionClass="text-error"
-          extraActionTargetId="leave-plan-modal"
         />
         <div class="card bg-base-100 border border-base-200 shadow-sm">
           <div class="card-body">
@@ -253,9 +329,9 @@
           </div>
           <div class="space-y-6">
             <ParticipantsCard participants={plan.participants} showManage={false} />
-            <ChatPanel messages={plan.chat} />
-          </div>
+            <ChatPanel messages={chatMessages} on:send={(event) => handleSendMessage(event.detail)} />
         </div>
+      </div>
 
         <ProposedActivities
           activities={rejectedActivities}
@@ -311,20 +387,7 @@
       open={paymentSuccessOpen}
     />
 
-    <input id="leave-plan-modal" type="checkbox" class="modal-toggle" />
-    <div class="modal" role="dialog">
-      <div class="modal-box">
-        <h3 class="text-lg font-semibold mb-3 text-error">Leave this plan?</h3>
-        <p class="text-sm text-base-content/70">
-          You will lose access to the itinerary and chat unless you are re-invited.
-        </p>
-        <div class="modal-action">
-          <label for="leave-plan-modal" class="btn btn-ghost">Cancel</label>
-          <button class="btn btn-error">Leave Plan</button>
-        </div>
-      </div>
-      <label class="modal-backdrop" for="leave-plan-modal">Close</label>
-    </div>
+    <!-- Leave plan modal intentionally disabled -->
 
     <AddActivityModal
       planId={plan?.id ?? null}

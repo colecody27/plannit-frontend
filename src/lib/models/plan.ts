@@ -155,10 +155,13 @@ export const mapActivityFromApi = (activity: ApiActivity, index = 0): Activity =
 };
 
 export const mapMessageFromApi = (message: ApiMessage, index = 0): ChatMessage => ({
-  id: (message as Record<string, any>).id ?? `message-${index}`,
-  name: message.sender_id ?? 'Participant',
+  id:
+    (message as Record<string, any>).id ??
+    `${message.sender_id ?? 'sender'}-${message.date ?? message.timestamp ?? index}`,
+  senderId: message.sender_id ?? undefined,
+  name: message.sender_name ?? 'Participant',
   message: message.text,
-  timestamp: parseDate(message.timestamp ?? null),
+  timestamp: parseDate(message.date ?? message.timestamp ?? null),
   isSelf: false
 });
 

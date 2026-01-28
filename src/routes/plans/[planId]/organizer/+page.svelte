@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import AppNav from '$lib/components/AppNav.svelte';
   import Avatar from '$lib/components/Avatar.svelte';
   import PlanHeader from '$lib/components/PlanHeader.svelte';
@@ -9,6 +9,7 @@
   import ChatPanel from '$lib/components/ChatPanel.svelte';
   import AddActivityModal from '$lib/components/AddActivityModal.svelte';
   import ProposedActivities from '$lib/components/ProposedActivities.svelte';
+  import { joinPlan, onMessage, sendMessage } from '$lib/socket';
   import LocationAutocomplete from '$lib/components/LocationAutocomplete.svelte';
   import type { Activity } from '$lib/types';
   import { formatShortDate } from '$lib/models/plan';
@@ -56,6 +57,8 @@
   let itineraryTimeline: { openActivityModal: (activity: Activity) => void } | null = null;
   let rejectedCarousel: HTMLDivElement | null = null;
   let activities = $state(props.data.plan?.activities ?? []);
+  let chatMessages = $state(props.data.plan?.chat ?? []);
+  let chatSeeded = $state(false);
   let originalPlan = $state({
     title: planTitle,
     description: planDescription,
@@ -271,6 +274,35 @@
     activities = props.data.plan?.activities ?? [];
   });
 
+  $effect(() => {
+    if (chatSeeded) {
+      return;
+    }
+    const profileId = props.data.profile?.id;
+    chatMessages = (props.data.plan?.chat ?? []).map((message) => ({
+      ...message,
+      isSelf: profileId ? message.senderId === profileId : message.isSelf
+    }));
+    chatSeeded = true;
+  });
+
+  $effect(() => {
+    const profileId = props.data.profile?.id;
+    if (!profileId) {
+      return;
+    }
+    const needsUpdate = chatMessages.some(
+      (message) => message.senderId && message.isSelf !== (message.senderId === profileId)
+    );
+    if (!needsUpdate) {
+      return;
+    }
+    chatMessages = chatMessages.map((message) => ({
+      ...message,
+      isSelf: message.senderId === profileId
+    }));
+  });
+
   const handleActivityUpdate = (event: CustomEvent<Activity>) => {
     const updated = event.detail;
     activities = activities.map((activity) =>
@@ -281,6 +313,55 @@
   const handlePlanUpdate = (event: CustomEvent<Activity[]>) => {
     activities = event.detail;
   };
+
+  const appendChatMessage = (payload: {
+    sender_id: string;
+    sender_name?: string;
+    text: string;
+    date: string;
+  }) => {
+    const next = {
+      id: `${payload.sender_id ?? 'sender'}-${payload.date}`,
+      senderId: payload.sender_id ?? undefined,
+      name: payload.sender_name ?? 'Participant',
+      message: payload.text,
+      timestamp: payload.date ? new Date(payload.date) : null,
+      isSelf: payload.sender_id === (props.data.profile?.id ?? '')
+    };
+    chatMessages = [...chatMessages, next];
+  };
+
+  const handleSendMessage = async (text: string) => {
+    const planId = props.data.plan?.id;
+    if (!planId) {
+      return;
+    }
+    console.log('Organizer chat send', { planId, text });
+    const response = await sendMessage(planId, text);
+    console.log('Organizer chat response', response);
+    if (response) {
+      appendChatMessage(response);
+    }
+  };
+
+  let unsubscribeMessages = () => {};
+  let chatSubscribed = $state(false);
+  $effect(() => {
+    if (chatSubscribed) {
+      return;
+    }
+    const planId = props.data.plan?.id;
+    if (!planId) {
+      return;
+    }
+    joinPlan(planId);
+    unsubscribeMessages = onMessage(appendChatMessage);
+    chatSubscribed = true;
+  });
+
+  onDestroy(() => {
+    unsubscribeMessages();
+  });
 
   const handleActivityCreated = (event: CustomEvent<Activity>) => {
     const created = event.detail;
@@ -644,7 +725,7 @@
               participants={participantsWithHost}
               manageTargetId="manage-participants-modal"
             />
-            <ChatPanel messages={props.data.plan.chat} />
+            <ChatPanel messages={chatMessages} on:send={(event) => handleSendMessage(event.detail)} />
           </div>
         </div>
 
@@ -712,13 +793,12 @@
     <input id="remove-participant-modal" type="checkbox" class="modal-toggle" />
     <div class="modal" role="dialog">
       <div class="modal-box">
-        <h3 class="text-lg font-semibold mb-3 text-error">Remove participant?</h3>
+        <h3 class="text-lg font-semibold mb-3">Feature unavailable</h3>
         <p class="text-sm text-base-content/70">
-          They will lose access to the itinerary and chat for this plan.
+          Removing participants isn’t available right now.
         </p>
         <div class="modal-action">
-          <label for="remove-participant-modal" class="btn btn-ghost">Cancel</label>
-          <button class="btn btn-error">Remove</button>
+          <label for="remove-participant-modal" class="btn btn-primary">Okay</label>
         </div>
       </div>
       <label class="modal-backdrop" for="remove-participant-modal">Close</label>

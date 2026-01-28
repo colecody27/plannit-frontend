@@ -30,7 +30,9 @@ export interface ApiActivity {
 
 export interface ApiMessage {
   sender_id: string;
+  sender_name?: string;
   text: string;
+  date?: string | null;
   timestamp?: string | null;
 }
 

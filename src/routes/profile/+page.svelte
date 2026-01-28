@@ -95,7 +95,7 @@
         form.append('picture', profileImageFile);
 
         const headers = new Headers();
-        const token = browser ? localStorage.getItem('plannit-token') : null;
+        const token = browser ? localStorage.getItem('access_token_cookie') : null;
         if (token) {
           headers.set('Authorization', `Bearer ${token}`);
         }
