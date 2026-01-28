@@ -3,8 +3,9 @@
   import { formatTime } from '$lib/models/plan';
   import { createEventDispatcher, tick } from 'svelte';
 
-  const props = $props<{ messages?: ChatMessage[] }>();
+  const props = $props<{ messages?: ChatMessage[]; activeUsers?: number | null }>();
   const messages = $derived(props.messages ?? []);
+  const activeUsers = $derived(props.activeUsers ?? null);
 
   const dispatch = createEventDispatcher<{ send: string }>();
   let draft = $state('');
@@ -33,7 +34,9 @@
   <div class="card-body gap-4">
     <div class="flex items-center justify-between">
       <h3 class="text-lg font-semibold">Group Chat</h3>
-      <span class="text-xs text-success">3 online</span>
+      <span class="text-xs text-success">
+        {activeUsers !== null ? `${activeUsers} online` : 'Online'}
+      </span>
     </div>
     <div class="space-y-4 max-h-72 overflow-auto" bind:this={scrollContainer}>
       {#each messages as message}

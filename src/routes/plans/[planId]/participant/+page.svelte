@@ -10,8 +10,8 @@
   import ProposedActivities from '$lib/components/ProposedActivities.svelte';
   import PaymentSuccessModal from '$lib/components/PaymentSuccessModal.svelte';
   import { formatShortDate } from '$lib/models/plan';
-  import { onDestroy, onMount } from 'svelte';
-  import { joinPlan, onMessage, sendMessage } from '$lib/socket';
+  import { onDestroy } from 'svelte';
+  import { joinPlan, leavePlan, onAnnouncement, onMessage, onUsers, sendMessage } from '$lib/socket';
   import { apiFetch } from '$lib/api/client';
   import { invalidate } from '$app/navigation';
   import { page } from '$app/stores';
@@ -40,6 +40,7 @@
 
   let activities = $state(plan?.activities ?? []);
   let chatMessages = $state(plan?.chat ?? []);
+  let activeUsers = $state<number | null>(null);
   let chatSeeded = $state(false);
 
   $effect(() => {
@@ -103,6 +104,24 @@
     chatMessages = [...chatMessages, next];
   };
 
+  const appendAnnouncement = (payload: { msg?: string }) => {
+    if (!payload?.msg) {
+      return;
+    }
+    const now = new Date().toISOString();
+    chatMessages = [
+      ...chatMessages,
+      {
+        id: `announcement-${now}`,
+        senderId: 'system',
+        name: 'Announcement',
+        message: payload.msg,
+        timestamp: new Date(now),
+        isSelf: false
+      }
+    ];
+  };
+
   const handleSendMessage = async (text: string) => {
     if (!plan?.id) {
       return;
@@ -116,6 +135,8 @@
   };
 
   let unsubscribeMessages = () => {};
+  let unsubscribeUsers = () => {};
+  let unsubscribeAnnouncements = () => {};
   let chatSubscribed = $state(false);
   $effect(() => {
     if (chatSubscribed) {
@@ -127,11 +148,29 @@
     }
     joinPlan(planId);
     unsubscribeMessages = onMessage(appendChatMessage);
+    unsubscribeUsers = onUsers((payload) => {
+      const count =
+        typeof payload?.count === 'number'
+          ? payload.count
+          : typeof payload?.msg === 'number'
+            ? payload.msg
+            : payload?.msg?.count;
+      if (typeof count === 'number') {
+        activeUsers = count;
+      }
+    });
+    unsubscribeAnnouncements = onAnnouncement(appendAnnouncement);
     chatSubscribed = true;
   });
 
   onDestroy(() => {
+    console.log('Participant chat destroy', { planId: plan?.id ?? null });
+    if (plan?.id) {
+      leavePlan(plan.id);
+    }
     unsubscribeMessages();
+    unsubscribeUsers();
+    unsubscribeAnnouncements();
   });
 
   const handleActivityCreated = (event: CustomEvent<import('$lib/types').Activity>) => {
@@ -329,7 +368,11 @@
           </div>
           <div class="space-y-6">
             <ParticipantsCard participants={plan.participants} showManage={false} />
-            <ChatPanel messages={chatMessages} on:send={(event) => handleSendMessage(event.detail)} />
+            <ChatPanel
+              messages={chatMessages}
+              activeUsers={activeUsers}
+              on:send={(event) => handleSendMessage(event.detail)}
+            />
         </div>
       </div>
 

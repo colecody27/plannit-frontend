@@ -9,7 +9,7 @@
   import ChatPanel from '$lib/components/ChatPanel.svelte';
   import AddActivityModal from '$lib/components/AddActivityModal.svelte';
   import ProposedActivities from '$lib/components/ProposedActivities.svelte';
-  import { joinPlan, onMessage, sendMessage } from '$lib/socket';
+  import { joinPlan, leavePlan, onAnnouncement, onMessage, onUsers, sendMessage } from '$lib/socket';
   import LocationAutocomplete from '$lib/components/LocationAutocomplete.svelte';
   import type { Activity } from '$lib/types';
   import { formatShortDate } from '$lib/models/plan';
@@ -58,6 +58,7 @@
   let rejectedCarousel: HTMLDivElement | null = null;
   let activities = $state(props.data.plan?.activities ?? []);
   let chatMessages = $state(props.data.plan?.chat ?? []);
+  let activeUsers = $state<number | null>(null);
   let chatSeeded = $state(false);
   let originalPlan = $state({
     title: planTitle,
@@ -331,6 +332,24 @@
     chatMessages = [...chatMessages, next];
   };
 
+  const appendAnnouncement = (payload: { msg?: string }) => {
+    if (!payload?.msg) {
+      return;
+    }
+    const now = new Date().toISOString();
+    chatMessages = [
+      ...chatMessages,
+      {
+        id: `announcement-${now}`,
+        senderId: 'system',
+        name: 'Announcement',
+        message: payload.msg,
+        timestamp: new Date(now),
+        isSelf: false
+      }
+    ];
+  };
+
   const handleSendMessage = async (text: string) => {
     const planId = props.data.plan?.id;
     if (!planId) {
@@ -345,6 +364,8 @@
   };
 
   let unsubscribeMessages = () => {};
+  let unsubscribeUsers = () => {};
+  let unsubscribeAnnouncements = () => {};
   let chatSubscribed = $state(false);
   $effect(() => {
     if (chatSubscribed) {
@@ -356,11 +377,29 @@
     }
     joinPlan(planId);
     unsubscribeMessages = onMessage(appendChatMessage);
+    unsubscribeUsers = onUsers((payload) => {
+      const count =
+        typeof payload?.count === 'number'
+          ? payload.count
+          : typeof payload?.msg === 'number'
+            ? payload.msg
+            : payload?.msg?.count;
+      if (typeof count === 'number') {
+        activeUsers = count;
+      }
+    });
+    unsubscribeAnnouncements = onAnnouncement(appendAnnouncement);
     chatSubscribed = true;
   });
 
   onDestroy(() => {
+    console.log('Organizer chat destroy', { planId: props.data.plan?.id ?? null });
+    if (props.data.plan?.id) {
+      leavePlan(props.data.plan.id);
+    }
     unsubscribeMessages();
+    unsubscribeUsers();
+    unsubscribeAnnouncements();
   });
 
   const handleActivityCreated = (event: CustomEvent<Activity>) => {
@@ -725,7 +764,11 @@
               participants={participantsWithHost}
               manageTargetId="manage-participants-modal"
             />
-            <ChatPanel messages={chatMessages} on:send={(event) => handleSendMessage(event.detail)} />
+            <ChatPanel
+              messages={chatMessages}
+              activeUsers={activeUsers}
+              on:send={(event) => handleSendMessage(event.detail)}
+            />
           </div>
         </div>
 

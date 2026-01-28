@@ -50,14 +50,22 @@ export const joinPlan = (planId: string) => {
     return;
   }
   if (client.connected) {
-    console.log('Socket: join_plan emit (connected)', { plan_id: planId });
-    client.emit('join_plan', { plan_id: planId });
+    console.log('Socket: plan:join emit (connected)', { plan_id: planId });
+    client.emit('plan:join', { plan_id: planId });
   } else {
     client.once('connect', () => {
-      console.log('Socket: join_plan emit (after connect)', { plan_id: planId });
-      client.emit('join_plan', { plan_id: planId });
+      console.log('Socket: plan:join emit (after connect)', { plan_id: planId });
+      client.emit('plan:join', { plan_id: planId });
     });
   }
+};
+
+export const leavePlan = (planId: string) => {
+  if (!socket || !socket.connected) {
+    return;
+  }
+  console.log('Socket: plan:leave emit', { plan_id: planId });
+  socket.emit('plan:leave', { plan_id: planId });
 };
 
 export const sendMessage = (planId: string, message: string) =>
@@ -67,9 +75,9 @@ export const sendMessage = (planId: string, message: string) =>
       resolve(null);
       return;
     }
-    console.log('Socket: send_message emit', { plan_id: planId, message });
-    client.emit('send_message', { plan_id: planId, message }, (payload: any) => {
-      console.log('Socket: send_message ack', payload);
+    console.log('Socket: plan:message:send emit', { plan_id: planId, message });
+    client.emit('plan:message:send', { plan_id: planId, message }, (payload: any) => {
+      console.log('Socket: plan:message:send ack', payload);
       resolve(payload ?? null);
     });
   });
@@ -84,8 +92,38 @@ export const onMessage = (
   const listener = (payload: { sender_id: string; sender_name?: string; text: string; date: string }) => {
     handler(payload);
   };
-  client.on('new_message', listener);
+  client.on('plan:message:new', listener);
   return () => {
-    client.off('new_message', listener);
+    client.off('plan:message:new', listener);
+  };
+};
+
+export const onUsers = (
+  handler: (payload: { msg?: { count?: number } | number; count?: number }) => void
+) => {
+  const client = connectSocket();
+  if (!client) {
+    return () => {};
+  }
+  const listener = (payload: { msg?: { count?: number } | number; count?: number }) => {
+    handler(payload);
+  };
+  client.on('plan:users', listener);
+  return () => {
+    client.off('plan:users', listener);
+  };
+};
+
+export const onAnnouncement = (handler: (payload: { msg?: string }) => void) => {
+  const client = connectSocket();
+  if (!client) {
+    return () => {};
+  }
+  const listener = (payload: { msg?: string }) => {
+    handler(payload);
+  };
+  client.on('plan:announcement', listener);
+  return () => {
+    client.off('plan:announcement', listener);
   };
 };
