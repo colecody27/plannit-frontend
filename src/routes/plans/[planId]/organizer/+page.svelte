@@ -40,6 +40,9 @@
   let inviteModalOpen = $state(false);
   let copiedInvite = $state(false);
   let addActivityOpen = $state(false);
+  let chatOpen = $state(false);
+  let lockedActivityNoticeOpen = $state(false);
+  let detailsExpanded = $state(false);
   let isEditing = $state(false);
   let isPlanSaving = $state(false);
   let isPlanLocking = $state(false);
@@ -60,6 +63,12 @@
   let chatMessages = $state(props.data.plan?.chat ?? []);
   let activeUsers = $state<number | null>(null);
   let chatSeeded = $state(false);
+  const descriptionShort = $derived.by(() =>
+    planDescription.length > 180
+      ? `${planDescription.slice(0, 180).trim()}...`
+      : planDescription
+  );
+  const descriptionTooLong = $derived.by(() => planDescription.length > 180);
   let originalPlan = $state({
     title: planTitle,
     description: planDescription,
@@ -402,6 +411,48 @@
     unsubscribeAnnouncements();
   });
 
+  onMount(() => {
+    const root = document.querySelector('.people-carousel-root');
+    const carousel = root?.querySelector('.people-carousel');
+    const dots = root?.querySelectorAll<HTMLButtonElement>('[data-target]');
+    if (!root || !carousel || !dots?.length) {
+      return;
+    }
+
+    const items = root.querySelectorAll<HTMLElement>('.people-snap');
+    const setActive = (index: number) => {
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('bg-primary', i === index);
+        dot.classList.toggle('bg-base-300', i !== index);
+      });
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (!visible) {
+          return;
+        }
+        const index = Array.from(items).indexOf(visible.target as HTMLElement);
+        if (index >= 0) {
+          setActive(index);
+        }
+      },
+      { root: carousel, threshold: [0.6] }
+    );
+
+    items.forEach((item) => observer.observe(item));
+    setActive(0);
+
+    dots.forEach((dot, index) => {
+      dot.addEventListener('click', () => {
+        items[index]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      });
+    });
+  });
+
   const handleActivityCreated = (event: CustomEvent<Activity>) => {
     const created = event.detail;
     activities = [created, ...activities];
@@ -425,6 +476,31 @@
   };
 
   const toDay = (value: Date | null) => (value ? formatDate(value) : null);
+
+  const scrollToTop = () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleAddActivityClick = () => {
+    if (isPlanLocked) {
+      lockedActivityNoticeOpen = true;
+      return;
+    }
+    addActivityOpen = true;
+  };
+
+  const openCosts = () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const statsSection = document.getElementById('plan-stats');
+    if (statsSection) {
+      statsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const savePlan = async () => {
     if (isPlanSaving) {
@@ -562,7 +638,7 @@
 
 <div>
   <AppNav />
-  <main class="px-6 lg:px-16 pb-20">
+  <main class="mx-auto w-full max-w-7xl px-6 lg:px-16 pb-20">
     <section class="section-spacing space-y-8">
       {#if props.data.statusMessage}
         <div class="alert alert-error text-sm">
@@ -611,7 +687,7 @@
             </label>
           </div>
         {/if}
-        <div class="card bg-base-100 border border-base-200 shadow-sm">
+        <div class="card bg-primary/10 border border-primary/20 shadow-sm">
           <div class="card-body">
             <div class="overflow-hidden rounded-2xl border border-base-200">
               <img
@@ -637,7 +713,18 @@
             {#if isEditing}
               <textarea class="textarea textarea-bordered h-28" bind:value={planDescription}></textarea>
             {:else}
-              <p class="text-sm text-base-content/70">{planDescription}</p>
+              <p class="text-sm text-base-content/70">
+                {detailsExpanded ? planDescription : descriptionShort}
+              </p>
+              {#if descriptionTooLong}
+                <button
+                  class="btn btn-xs btn-ghost text-primary mt-2"
+                  type="button"
+                  on:click={() => (detailsExpanded = !detailsExpanded)}
+                >
+                  {detailsExpanded ? 'Read less' : 'Read more'}
+                </button>
+              {/if}
             {/if}
             <div class="mt-5 grid gap-4 md:grid-cols-2">
               <div class="rounded-2xl border border-base-200 bg-base-100 p-4">
@@ -740,12 +827,56 @@
             </span>
           </div>
         {/if}
-        <PlanStats
-          budget={confirmedTotalCost}
-          collected={props.data.plan.raised}
-          perPerson={userTotalCost}
-          countdown={formatCountdown(planStartDate)}
-        />
+        <div id="plan-stats">
+          <PlanStats
+            budget={confirmedTotalCost}
+            collected={props.data.plan.raised}
+            perPerson={userTotalCost}
+            countdown={formatCountdown(planStartDate)}
+          />
+        </div>
+
+        <div class="card bg-base-100 border border-base-200 shadow-sm lg:hidden people-carousel-root">
+          <div class="card-body gap-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h3 class="text-lg font-semibold">People ({participantsWithHost.length})</h3>
+              <div class="flex items-center gap-2">
+                <label class="btn btn-xs btn-ghost text-primary" for="invite-modal">Invite friends</label>
+                <label class="btn btn-xs btn-ghost text-primary" for="manage-participants-modal">Manage</label>
+              </div>
+            </div>
+            <div class="carousel w-full people-carousel">
+              {#each participantsWithHost as person, index}
+                <div id={`participant-${index}`} class="carousel-item w-full justify-center people-snap">
+                  <div class="flex w-full max-w-sm mx-auto items-center gap-3 rounded-2xl border border-base-200 bg-base-100 px-3 py-2">
+                    <Avatar
+                      initials={person.name.slice(0, 1)}
+                      status="online"
+                      imageUrl={person.avatar ?? null}
+                    />
+                    <div>
+                      <p class="font-semibold text-sm">{person.name}</p>
+                      {#if person.status === 'organizer'}
+                        <span class="badge badge-success badge-xs">Organizer</span>
+                      {:else if person.status === 'paid'}
+                        <span class="text-xs text-primary">Paid</span>
+                      {/if}
+                    </div>
+                  </div>
+                </div>
+              {/each}
+            </div>
+            <div class="flex justify-center gap-2 pt-1">
+              {#each participantsWithHost as _, index}
+                <button
+                  class="h-2 w-2 rounded-full bg-base-300"
+                  type="button"
+                  data-target={`participant-${index}`}
+                ></button>
+              {/each}
+            </div>
+          </div>
+        </div>
 
         <div class="grid gap-6 lg:grid-cols-[2fr,1fr]">
           <div class="space-y-6">
@@ -760,15 +891,19 @@
             />
           </div>
           <div class="space-y-6">
-            <ParticipantsCard
-              participants={participantsWithHost}
-              manageTargetId="manage-participants-modal"
-            />
-            <ChatPanel
-              messages={chatMessages}
-              activeUsers={activeUsers}
-              on:send={(event) => handleSendMessage(event.detail)}
-            />
+            <div class="hidden lg:block">
+              <ParticipantsCard
+                participants={participantsWithHost}
+                manageTargetId="manage-participants-modal"
+              />
+            </div>
+            <div class="hidden lg:block">
+              <ChatPanel
+                messages={chatMessages}
+                activeUsers={activeUsers}
+                on:send={(event) => handleSendMessage(event.detail)}
+              />
+            </div>
           </div>
         </div>
 
@@ -833,6 +968,39 @@
       on:activityCreated={handleActivityCreated}
     />
 
+    {#if lockedActivityNoticeOpen}
+      <div class="modal modal-open" role="dialog">
+        <div class="modal-box">
+          <h3 class="text-lg font-semibold mb-2">Unable to create activity</h3>
+          <p class="text-sm text-base-content/70">This plan is locked, so activities can’t be added.</p>
+          <div class="modal-action">
+            <button class="btn btn-primary" type="button" on:click={() => (lockedActivityNoticeOpen = false)}>
+              Okay
+            </button>
+          </div>
+        </div>
+        <div class="modal-backdrop" on:click={() => (lockedActivityNoticeOpen = false)}></div>
+      </div>
+    {/if}
+
+    {#if chatOpen}
+      <div class="modal modal-open" role="dialog">
+        <div class="modal-box max-w-sm">
+          <ChatPanel
+            messages={chatMessages}
+            activeUsers={activeUsers}
+            on:send={(event) => handleSendMessage(event.detail)}
+          />
+          <div class="modal-action">
+            <button class="btn btn-outline" type="button" on:click={() => (chatOpen = false)}>
+              Close
+            </button>
+          </div>
+        </div>
+        <div class="modal-backdrop" on:click={() => (chatOpen = false)}></div>
+      </div>
+    {/if}
+
     <input id="remove-participant-modal" type="checkbox" class="modal-toggle" />
     <div class="modal" role="dialog">
       <div class="modal-box">
@@ -879,4 +1047,33 @@
       <label class="modal-backdrop" for="invite-modal">Close</label>
     </div>
   </main>
+
+  <button
+    class="btn btn-circle btn-primary fixed bottom-24 right-6 shadow-lg lg:hidden"
+    type="button"
+    on:click={() => (chatOpen = true)}
+  >
+    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M7 11h10v2H7v-2Zm0-4h10v2H7V7Zm12-4H5a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h3.5l3.2 2.4a1 1 0 0 0 1.6-.8V19H19a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3Z" />
+    </svg>
+  </button>
+
+  <div class="fixed inset-x-0 bottom-0 z-40 border-t border-base-200 bg-base-100 px-4 py-3 lg:hidden">
+    <div class="flex items-center justify-around">
+      <button class="btn btn-ghost" type="button" on:click={scrollToTop}>Plan</button>
+      <button class="btn btn-circle btn-primary" type="button" on:click={handleAddActivityClick}>
+        +
+      </button>
+      <button class="btn btn-ghost" type="button" on:click={openCosts}>Costs</button>
+    </div>
+  </div>
 </div>
+
+<style>
+  :global(.people-carousel-root .people-carousel) {
+    scroll-snap-type: x mandatory;
+  }
+  :global(.people-carousel-root .people-snap) {
+    scroll-snap-align: center;
+  }
+</style>

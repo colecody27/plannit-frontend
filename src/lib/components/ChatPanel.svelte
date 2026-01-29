@@ -40,14 +40,20 @@
     </div>
     <div class="space-y-4 max-h-72 overflow-auto" bind:this={scrollContainer}>
       {#each messages as message}
-        <div class={`chat ${message.isSelf ? 'chat-end' : 'chat-start'}`}>
-          <div class="chat-header text-xs text-base-content/60">
-            {message.isSelf ? 'You' : message.name} - {formatTime(message.timestamp)}
+        {#if message.senderId === 'system'}
+          <div class="text-xs text-base-content/60 text-center">
+            {message.message} - {formatTime(message.timestamp)}
           </div>
-          <div class={`chat-bubble ${message.isSelf ? 'chat-bubble-primary text-primary-content' : ''}`}>
-            {message.message}
+        {:else}
+          <div class={`chat ${message.isSelf ? 'chat-end' : 'chat-start'}`}>
+            <div class="chat-header text-xs text-base-content/60">
+              {message.isSelf ? 'You' : message.name} - {formatTime(message.timestamp)}
+            </div>
+            <div class={`chat-bubble ${message.isSelf ? 'chat-bubble-primary text-primary-content' : ''}`}>
+              {message.message}
+            </div>
           </div>
-        </div>
+        {/if}
       {/each}
     </div>
     <div class="flex items-center gap-2">

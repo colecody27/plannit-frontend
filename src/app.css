@@ -14,12 +14,15 @@ html[data-theme='plannit-dark'] {
 
 body {
   font-family: 'Manrope', sans-serif;
-  background: hsl(var(--b2));
+  background: var(--color-base-200);
   min-height: 100vh;
 }
 
 html[data-theme='plannit-dark'] body {
-  background: hsl(var(--b2));
+  background:
+    radial-gradient(circle at top, rgba(13, 242, 166, 0.16), rgba(4, 9, 7, 0) 48%),
+    radial-gradient(circle at 12% 18%, rgba(13, 242, 166, 0.08), rgba(4, 9, 7, 0) 40%),
+    var(--color-base-200);
 }
 
 h1,
@@ -30,15 +33,18 @@ h4 {
 }
 
 .app-shell {
-  background-color: hsl(var(--b2));
+  background-color: var(--color-base-200);
 }
 
 html[data-theme='plannit-dark'] .app-shell {
-  background-color: hsl(var(--b2));
+  background:
+    radial-gradient(circle at top, rgba(13, 242, 166, 0.16), rgba(4, 9, 7, 0) 48%),
+    radial-gradient(circle at 12% 18%, rgba(13, 242, 166, 0.08), rgba(4, 9, 7, 0) 40%),
+    var(--color-base-200);
 }
 
 .card-border {
-  border: 1px solid hsl(var(--b2));
+  border: 1px solid var(--color-base-200);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
@@ -51,7 +57,33 @@ html[data-theme='plannit'] .card[class*='bg-base-'] {
 html[data-theme='plannit-dark'] .card,
 html[data-theme='plannit-dark'] .card.bg-base-100,
 html[data-theme='plannit-dark'] .card[class*='bg-base-'] {
-  background-color: #0f1d17 !important;
+  background-color: rgba(18, 24, 22, 0.6) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 16px 32px rgba(0, 0, 0, 0.4),
+    0 0 12px rgba(13, 242, 166, 0.12);
+}
+
+html[data-theme='plannit-dark'] .btn-primary,
+html[data-theme='plannit-dark'] .badge-success,
+html[data-theme='plannit-dark'] .progress-primary {
+  box-shadow: 0 0 12px rgba(13, 242, 166, 0.24);
+}
+
+html[data-theme='plannit-dark'] .btn-primary:hover {
+  box-shadow: 0 0 16px rgba(13, 242, 166, 0.36);
+}
+
+html[data-theme='plannit-dark'] .progress-primary {
+  box-shadow: none;
+}
+
+html[data-theme='plannit-dark'] .progress-primary::-webkit-progress-value {
+  box-shadow: 0 0 10px rgba(13, 242, 166, 0.3);
+}
+
+html[data-theme='plannit-dark'] .progress-primary::-moz-progress-bar {
+  box-shadow: 0 0 10px rgba(13, 242, 166, 0.3);
 }
 
 .section-spacing {
@@ -121,12 +153,12 @@ calendar-range::part(button) {
   border: 1px solid transparent;
   border-radius: 9999px;
   background: transparent;
-  color: hsl(var(--bc)) !important;
+  color: var(--color-base-content) !important;
   padding: 0.15rem 0.6rem;
 }
 
 calendar-range::part(button):hover {
-  background: hsl(var(--b2));
+  background: var(--color-base-200);
 }
 
 calendar-range::part(day) {
@@ -136,15 +168,15 @@ calendar-range::part(day) {
 }
 
 calendar-range::part(day):hover {
-  background: hsl(var(--b2));
+  background: var(--color-base-200);
 }
 
 calendar-range::part(selected),
 calendar-range::part(range-start),
 calendar-range::part(range-end),
 calendar-range::part(range-inner) {
-  background: hsl(var(--su)) !important;
-  color: hsl(var(--suc)) !important;
+  background: var(--color-success) !important;
+  color: var(--color-success-content) !important;
 }
 
 html[data-theme='plannit-dark'] input[type='date'],

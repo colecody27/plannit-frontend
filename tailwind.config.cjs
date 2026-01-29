@@ -8,7 +8,7 @@ module.exports = {
       },
       boxShadow: {
         lift: '0 20px 40px -30px rgba(23, 60, 45, 0.55)',
-        glow: '0 12px 30px -18px rgba(23, 230, 142, 0.7)'
+        glow: '0 10px 24px -16px rgba(23, 230, 142, 0.45)'
       },
       backgroundImage: {
         'soft-radial': 'radial-gradient(circle at top, rgba(23, 230, 142, 0.18), rgba(246, 251, 248, 0) 45%)'
@@ -36,17 +36,17 @@ module.exports = {
       },
       {
         'plannit-dark': {
-          primary: '#17E68E',
-          'primary-content': '#031F13',
-          secondary: '#2BD3B0',
+          primary: '#0DF2A6',
+          'primary-content': '#031D14',
+          secondary: '#9AE6FF',
           accent: '#FFD48A',
-          neutral: '#0B1411',
-          'base-100': '#1B2B23',
-          'base-200': '#213329',
-          'base-300': '#2A4034',
-          'base-content': '#E6F0EA',
+          neutral: '#040907',
+          'base-100': '#121816',
+          'base-200': '#0B100E',
+          'base-300': '#040907',
+          'base-content': '#E2E8F0',
           info: '#4D9DE0',
-          success: '#23C16B',
+          success: '#0DF2A6',
           warning: '#FFB020',
           error: '#E35B5B'
         }

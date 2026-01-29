@@ -11,13 +11,16 @@
   <div class="card-body gap-4">
     <div class="flex items-center justify-between">
       <h3 class="text-lg font-semibold">Participants ({participants.length})</h3>
-      {#if showManage}
-        {#if manageTargetId}
-          <label class="btn btn-xs btn-ghost text-primary" for={manageTargetId}>Manage</label>
-        {:else}
-          <button class="btn btn-xs btn-ghost text-primary">Manage</button>
+      <div class="flex items-center gap-2">
+        {#if showManage}
+          {#if manageTargetId}
+            <label class="btn btn-xs btn-ghost text-primary" for={manageTargetId}>Manage</label>
+          {:else}
+            <button class="btn btn-xs btn-ghost text-primary">Manage</button>
+          {/if}
         {/if}
-      {/if}
+        <slot name="action"></slot>
+      </div>
     </div>
     <div class="space-y-3">
       {#each participants as person}

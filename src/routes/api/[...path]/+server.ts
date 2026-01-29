@@ -19,6 +19,9 @@ const proxyRequest: RequestHandler = async ({ request, url, params, cookies }) =
   headers.delete('content-length');
   if (!headers.has('authorization')) {
     const token = cookies.get('access_token_cookie');
+    if (targetPath.includes('/vote')) {
+      console.log('Proxy auth check', { targetPath, hasCookie: Boolean(token) });
+    }
     if (token) {
       headers.set('authorization', `Bearer ${token}`);
     }

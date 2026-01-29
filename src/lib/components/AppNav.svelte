@@ -37,10 +37,30 @@
 
 <nav class="navbar px-6 lg:px-16 py-4">
   <div class="navbar-start gap-3">
-    <a class="flex items-center gap-3" href="/dashboard">
+    <div class="dropdown lg:hidden">
+      <label tabindex="0" class="btn btn-ghost btn-circle">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z" />
+        </svg>
+      </label>
+      <ul
+        tabindex="0"
+        class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-44 border border-base-200"
+      >
+        {#each navLinks as link}
+          <li><a href={link.href}>{link.label}</a></li>
+        {/each}
+      </ul>
+    </div>
+    <a class="hidden lg:flex items-center gap-3" href="/dashboard">
       <div class="h-10 w-10 rounded-2xl bg-primary/20 text-primary flex items-center justify-center">
         <span class="text-lg font-bold">P</span>
       </div>
+      <span class="text-lg font-semibold tracking-tight">Plannit</span>
+    </a>
+  </div>
+  <div class="navbar-center lg:hidden">
+    <a class="flex items-center gap-3" href="/dashboard">
       <span class="text-lg font-semibold tracking-tight">Plannit</span>
     </a>
   </div>
@@ -73,10 +93,7 @@
         tabindex="0"
         class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-48 border border-base-200"
       >
-        <li><a href="/profile">Profile</a></li>
         <li><a href="/profile">Settings</a></li>
-        <li><a href="/logout">Logout</a></li>
-        <li><a href="#">More...</a></li>
       </ul>
     </div>
   </div>

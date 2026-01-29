@@ -123,28 +123,28 @@
       <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div class="tabs tabs-bordered">
           <button
-            class={`tab ${activeTab === 'all' ? 'tab-active' : ''}`}
+            class={`tab ${activeTab === 'all' ? 'tab-active text-primary border-primary' : ''}`}
             type="button"
             on:click={() => (activeTab = 'all')}
           >
             All ({props.data.plans.length})
           </button>
           <button
-            class={`tab ${activeTab === 'hosting' ? 'tab-active' : ''}`}
+            class={`tab ${activeTab === 'hosting' ? 'tab-active text-primary border-primary' : ''}`}
             type="button"
             on:click={() => (activeTab = 'hosting')}
           >
             Hosting ({hostingPlans.length})
           </button>
           <button
-            class={`tab ${activeTab === 'invited' ? 'tab-active' : ''}`}
+            class={`tab ${activeTab === 'invited' ? 'tab-active text-primary border-primary' : ''}`}
             type="button"
             on:click={() => (activeTab = 'invited')}
           >
             Invited ({invitedPlans.length})
           </button>
           <button
-            class={`tab ${activeTab === 'past' ? 'tab-active' : ''}`}
+            class={`tab ${activeTab === 'past' ? 'tab-active text-primary border-primary' : ''}`}
             type="button"
             on:click={() => (activeTab = 'past')}
           >

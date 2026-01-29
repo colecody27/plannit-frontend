@@ -10,11 +10,12 @@
   import ProposedActivities from '$lib/components/ProposedActivities.svelte';
   import PaymentSuccessModal from '$lib/components/PaymentSuccessModal.svelte';
   import { formatShortDate } from '$lib/models/plan';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import { joinPlan, leavePlan, onAnnouncement, onMessage, onUsers, sendMessage } from '$lib/socket';
   import { apiFetch } from '$lib/api/client';
   import { invalidate } from '$app/navigation';
   import { page } from '$app/stores';
+  import { browser } from '$app/environment';
 
   const props = $props();
   const plan = props.data.plan;
@@ -23,6 +24,14 @@
   let copiedVenmo = $state(false);
   let addActivityOpen = $state(false);
   let paymentSuccessOpen = $state(false);
+  let chatOpen = $state(false);
+  let lockedActivityNoticeOpen = $state(false);
+  let detailsExpanded = $state(false);
+  let inviteModalOpen = $state(false);
+  let inviteLink = $state('');
+  let inviteStatus = $state('');
+  let isInviteLoading = $state(false);
+  let copiedInvite = $state(false);
 
   const host =
     plan?.organizer ??
@@ -42,6 +51,93 @@
   let chatMessages = $state(plan?.chat ?? []);
   let activeUsers = $state<number | null>(null);
   let chatSeeded = $state(false);
+  const descriptionText = plan?.description ?? '';
+  const descriptionShort = descriptionText.length > 180
+    ? `${descriptionText.slice(0, 180).trim()}...`
+    : descriptionText;
+
+  const buildInviteLink = (rawLink: string, planId: string, inviteId: string) => {
+    const origin = browser ? window.location.origin : '';
+    const fallback = origin
+      ? `${origin}/plans/${planId}/invite/${inviteId}`
+      : `/plans/${planId}/invite/${inviteId}`;
+
+    if (!rawLink) {
+      return fallback;
+    }
+
+    try {
+      if (rawLink.startsWith('http')) {
+        const url = new URL(rawLink);
+        const path = url.pathname.startsWith('/plan/')
+          ? url.pathname.replace(/^\/plan\//, '/plans/')
+          : url.pathname;
+        return origin ? `${origin}${path}${url.search}` : `${path}${url.search}`;
+      }
+    } catch (error) {
+      return fallback;
+    }
+
+    if (rawLink.startsWith('/plan/')) {
+      return origin + rawLink.replace(/^\/plan\//, '/plans/');
+    }
+
+    if (rawLink.startsWith('/plans/')) {
+      return origin + rawLink;
+    }
+
+    return fallback;
+  };
+
+  const copyInviteLink = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+    } catch (error) {
+      // ignore clipboard errors
+    }
+    copiedInvite = true;
+    setTimeout(() => {
+      copiedInvite = false;
+    }, 2000);
+  };
+
+  const loadInviteLink = async () => {
+    if (isInviteLoading || inviteLink) {
+      return;
+    }
+
+    inviteStatus = '';
+    const planId = plan?.id;
+    if (!planId) {
+      inviteStatus = 'Invite link unavailable.';
+      return;
+    }
+
+    isInviteLoading = true;
+    try {
+      const payload = await apiFetch<{ success: boolean; data?: { link?: string } }>(
+        `/plan/${planId}/invite`
+      );
+      if (payload?.success && payload?.data?.link) {
+        const rawLink = payload.data.link;
+        const inviteId = payload.data.id ?? rawLink;
+        const resolvedPlanId = payload.data.plan_id ?? planId;
+        inviteLink = buildInviteLink(rawLink, resolvedPlanId, inviteId);
+      } else {
+        inviteStatus = 'Invite link unavailable.';
+      }
+    } catch (error) {
+      inviteStatus = 'Unable to load invite link right now.';
+    } finally {
+      isInviteLoading = false;
+    }
+  };
+
+  $effect(() => {
+    if (inviteModalOpen) {
+      loadInviteLink();
+    }
+  });
 
   $effect(() => {
     activities = plan?.activities ?? [];
@@ -173,9 +269,73 @@
     unsubscribeAnnouncements();
   });
 
+  onMount(() => {
+    const root = document.querySelector('.people-carousel-root');
+    const carousel = root?.querySelector('.people-carousel');
+    const dots = root?.querySelectorAll<HTMLButtonElement>('[data-target]');
+    if (!root || !carousel || !dots?.length) {
+      return;
+    }
+
+    const items = root.querySelectorAll<HTMLElement>('.people-snap');
+    const setActive = (index: number) => {
+      dots.forEach((dot, i) => {
+        dot.classList.toggle('bg-primary', i === index);
+        dot.classList.toggle('bg-base-300', i !== index);
+      });
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (!visible) {
+          return;
+        }
+        const index = Array.from(items).indexOf(visible.target as HTMLElement);
+        if (index >= 0) {
+          setActive(index);
+        }
+      },
+      { root: carousel, threshold: [0.6] }
+    );
+
+    items.forEach((item) => observer.observe(item));
+    setActive(0);
+
+    dots.forEach((dot, index) => {
+      dot.addEventListener('click', () => {
+        items[index]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      });
+    });
+  });
+
   const handleActivityCreated = (event: CustomEvent<import('$lib/types').Activity>) => {
     const created = event.detail;
     activities = [created, ...activities];
+  };
+
+  const scrollToTop = () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleAddActivityClick = () => {
+    if (planLocked) {
+      lockedActivityNoticeOpen = true;
+      return;
+    }
+    addActivityOpen = true;
+  };
+
+  const openCosts = () => {
+    const paymentModal = document.getElementById('payment-modal') as HTMLInputElement | null;
+    if (paymentModal) {
+      paymentModal.checked = true;
+    }
   };
 
   const userTotalCost = $derived.by(() => {
@@ -291,43 +451,99 @@
 
 <div>
   <AppNav />
-  <main class="px-6 lg:px-16 pb-20">
+  <main class="mx-auto w-full max-w-7xl px-6 lg:px-16 pb-20">
     <section class="section-spacing space-y-8">
       {#if statusMessage}
         <div class="alert alert-info text-sm">{statusMessage}</div>
       {:else if plan}
-        <PlanHeader
-          title={plan.title}
-          dateRange={formatTimeline(plan.startDay ?? null, plan.endDay ?? null)}
-          location={plan.location}
-          planStatus={plan.status}
-          showFinalize={false}
-          showInvite={false}
-        />
-        <div class="card bg-base-100 border border-base-200 shadow-sm">
-          <div class="card-body">
-            <div class="overflow-hidden rounded-2xl border border-base-200">
-              <img
-                class="h-48 w-full object-cover"
-                src={plan.coverImage}
-                alt={plan.title}
-              />
-            </div>
-            <div class="mt-4 flex items-center gap-3">
-              <Avatar
-                initials={hostInitials}
-                size="lg"
-                status="none"
-                imageUrl={plan.organizer?.picture ?? undefined}
-                innerClass="bg-primary/15 text-primary"
-              />
-              <div class="text-sm">
-                <p class="text-base-content/60">Hosted by</p>
-                <p class="font-semibold">{host?.name ?? 'Plan Organizer'}</p>
+        <div class="space-y-2 md:space-y-4">
+          <PlanHeader
+            title={plan.title}
+            dateRange={formatTimeline(plan.startDay ?? null, plan.endDay ?? null)}
+            location={plan.location}
+            planStatus={plan.status}
+            showFinalize={false}
+            showInvite={false}
+            showMeta={false}
+          />
+          <div class="card bg-primary/10 border border-primary/20 shadow-sm">
+            <div class="card-body">
+              <div class="overflow-hidden rounded-2xl border border-base-200">
+                <img
+                  class="h-48 w-full object-cover"
+                  src={plan.coverImage}
+                  alt={plan.title}
+                />
+              </div>
+              <div class="mt-4 flex items-center gap-3">
+                <Avatar
+                  initials={hostInitials}
+                  size="lg"
+                  status="none"
+                  imageUrl={plan.organizer?.picture ?? undefined}
+                  innerClass="bg-primary/15 text-primary"
+                />
+                <div class="text-sm">
+                  <p class="text-base-content/60">Hosted by</p>
+                  <p class="font-semibold">{host?.name ?? 'Plan Organizer'}</p>
+                </div>
+              </div>
+              <h3 class="text-lg font-semibold mt-4">Plan Details</h3>
+              <p class="text-sm text-base-content/70">
+                {detailsExpanded ? descriptionText : descriptionShort}
+              </p>
+              {#if descriptionText.length > 180}
+                <button
+                  class="btn btn-xs btn-ghost text-primary mt-2"
+                  type="button"
+                  on:click={() => (detailsExpanded = !detailsExpanded)}
+                >
+                  {detailsExpanded ? 'Read less' : 'Read more'}
+                </button>
+              {/if}
+              <div class="mt-5 grid gap-4 md:grid-cols-2">
+                <div class="rounded-2xl border border-base-200 bg-base-100 p-4">
+                  <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-base-content/50">
+                    <svg
+                      class="h-4 w-4 text-base-content/50"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M6 2a1 1 0 0 1 1 1v1h6V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 1-1Zm10 7H4v6a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9Z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                    <span>When</span>
+                  </div>
+                  <p class="mt-2 text-sm font-semibold text-base-content">
+                    {formatTimeline(plan.startDay ?? null, plan.endDay ?? null)}
+                  </p>
+                </div>
+                <div class="rounded-2xl border border-base-200 bg-base-100 p-4">
+                  <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-base-content/50">
+                    <svg
+                      class="h-4 w-4 text-base-content/50"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M9.69 18.933a1 1 0 0 1-1.38 0C5.425 16.31 3 13.469 3 10.5A7 7 0 1 1 17 10.5c0 2.969-2.425 5.81-5.31 8.433ZM10 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                    <span>Where</span>
+                  </div>
+                  <p class="mt-2 text-sm font-semibold text-base-content">
+                    {plan.location}
+                  </p>
+                </div>
               </div>
             </div>
-            <h3 class="text-lg font-semibold mt-4">Plan Details</h3>
-            <p class="text-sm text-base-content/70">{plan.description}</p>
           </div>
         </div>
         {#if planLocked}
@@ -348,12 +564,53 @@
             </div>
           </div>
         {/if}
-        <PlanStats
-          budget={confirmedTotalCost}
-          collected={plan.raised}
-          perPerson={userTotalCost}
-          countdown={formatCountdown(plan.startDay ?? null)}
-        />
+        <div id="plan-stats">
+          <PlanStats
+            budget={confirmedTotalCost}
+            collected={plan.raised}
+            perPerson={userTotalCost}
+            countdown={formatCountdown(plan.startDay ?? null)}
+          />
+        </div>
+
+        <div class="card bg-base-100 border border-base-200 shadow-sm lg:hidden people-carousel-root">
+          <div class="card-body gap-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-semibold">People ({plan.participants.length})</h3>
+              <label class="btn btn-xs btn-ghost text-primary" for="invite-modal">Invite friends</label>
+            </div>
+            <div class="carousel w-full people-carousel">
+              {#each plan.participants as person, index}
+                <div id={`participant-${index}`} class="carousel-item w-full justify-center people-snap">
+                  <div class="flex w-full max-w-sm mx-auto items-center gap-3 rounded-2xl border border-base-200 bg-base-100 px-3 py-2">
+                    <Avatar
+                      initials={person.name.slice(0, 1)}
+                      status="online"
+                      imageUrl={person.avatar ?? null}
+                    />
+                    <div>
+                      <p class="font-semibold text-sm">{person.name}</p>
+                      {#if person.status === 'organizer'}
+                        <span class="badge badge-success badge-xs">Organizer</span>
+                      {:else if person.status === 'paid'}
+                        <span class="text-xs text-primary">Paid</span>
+                      {/if}
+                    </div>
+                  </div>
+                </div>
+              {/each}
+            </div>
+            <div class="flex justify-center gap-2 pt-1">
+              {#each plan.participants as _, index}
+                <button
+                  class="h-2 w-2 rounded-full bg-base-300"
+                  type="button"
+                  data-target={`participant-${index}`}
+                ></button>
+              {/each}
+            </div>
+          </div>
+        </div>
 
         <div class="grid gap-6 lg:grid-cols-[2fr,1fr]">
           <div class="space-y-6">
@@ -367,12 +624,20 @@
             />
           </div>
           <div class="space-y-6">
-            <ParticipantsCard participants={plan.participants} showManage={false} />
-            <ChatPanel
-              messages={chatMessages}
-              activeUsers={activeUsers}
-              on:send={(event) => handleSendMessage(event.detail)}
-            />
+            <div class="hidden lg:block">
+              <ParticipantsCard participants={plan.participants} showManage={false}>
+                <svelte:fragment slot="action">
+                  <label class="btn btn-xs btn-ghost text-primary" for="invite-modal">Invite friends</label>
+                </svelte:fragment>
+              </ParticipantsCard>
+            </div>
+            <div class="hidden lg:block">
+              <ChatPanel
+                messages={chatMessages}
+                activeUsers={activeUsers}
+                on:send={(event) => handleSendMessage(event.detail)}
+              />
+            </div>
         </div>
       </div>
 
@@ -416,9 +681,19 @@
             </p>
           </div>
         </div>
+        {#if !planLocked}
+          <p class="text-xs text-base-content/60 mt-3">
+            Mark as paid will be available once the plan is locked.
+          </p>
+        {/if}
         <div class="modal-action">
           <label for="payment-modal" class="btn btn-outline">Close</label>
-          <button class="btn btn-primary" type="button" on:click={handleMarkPaid}>
+          <button
+            class={`btn btn-primary ${planLocked ? '' : 'btn-disabled opacity-60'}`}
+            type="button"
+            disabled={!planLocked}
+            on:click={handleMarkPaid}
+          >
             Mark as Paid
           </button>
         </div>
@@ -430,6 +705,38 @@
       open={paymentSuccessOpen}
     />
 
+    <input id="invite-modal" type="checkbox" class="modal-toggle" bind:checked={inviteModalOpen} />
+    <div class="modal" role="dialog">
+      <div class="modal-box text-center relative">
+        <label for="invite-modal" class="btn btn-ghost btn-sm absolute right-3 top-3">✕</label>
+        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <span class="text-xl">+</span>
+        </div>
+        <h3 class="text-lg font-semibold mt-4">Invite Friends</h3>
+        <p class="text-sm text-base-content/70 mt-1">
+          Send this link to friends so they can join the plan.
+        </p>
+        <input
+          class="mt-4 input input-bordered w-full text-sm font-medium"
+          readonly
+          value={
+            inviteLink
+              ? inviteLink.replace('https://', '')
+              : isInviteLoading
+                ? 'Loading invite link...'
+                : 'Invite link unavailable'
+          }
+        />
+        {#if inviteStatus}
+          <p class="text-xs text-error mt-2">{inviteStatus}</p>
+        {/if}
+        <button class="btn btn-primary w-full mt-4" on:click={copyInviteLink} disabled={!inviteLink}>
+          {copiedInvite ? 'Copied' : 'Copy link'}
+        </button>
+      </div>
+      <label class="modal-backdrop" for="invite-modal">Close</label>
+    </div>
+
     <!-- Leave plan modal intentionally disabled -->
 
     <AddActivityModal
@@ -440,5 +747,67 @@
       bind:open={addActivityOpen}
       on:activityCreated={handleActivityCreated}
     />
+
+    {#if lockedActivityNoticeOpen}
+      <div class="modal modal-open" role="dialog">
+        <div class="modal-box">
+          <h3 class="text-lg font-semibold mb-2">Unable to create activity</h3>
+          <p class="text-sm text-base-content/70">This plan is locked, so activities can’t be added.</p>
+          <div class="modal-action">
+            <button class="btn btn-primary" type="button" on:click={() => (lockedActivityNoticeOpen = false)}>
+              Okay
+            </button>
+          </div>
+        </div>
+        <div class="modal-backdrop" on:click={() => (lockedActivityNoticeOpen = false)}></div>
+      </div>
+    {/if}
   </main>
+
+  <button
+    class="btn btn-circle btn-primary fixed bottom-24 right-6 shadow-lg lg:hidden"
+    type="button"
+    on:click={() => (chatOpen = true)}
+  >
+    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M7 11h10v2H7v-2Zm0-4h10v2H7V7Zm12-4H5a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h3.5l3.2 2.4a1 1 0 0 0 1.6-.8V19H19a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3Z" />
+    </svg>
+  </button>
+
+  {#if chatOpen}
+    <div class="modal modal-open" role="dialog">
+      <div class="modal-box max-w-sm">
+        <ChatPanel
+          messages={chatMessages}
+          activeUsers={activeUsers}
+          on:send={(event) => handleSendMessage(event.detail)}
+        />
+        <div class="modal-action">
+          <button class="btn btn-outline" type="button" on:click={() => (chatOpen = false)}>
+            Close
+          </button>
+        </div>
+      </div>
+      <div class="modal-backdrop" on:click={() => (chatOpen = false)}></div>
+    </div>
+  {/if}
+
+  <div class="fixed inset-x-0 bottom-0 z-40 border-t border-base-200 bg-base-100 px-4 py-3 lg:hidden">
+    <div class="flex items-center justify-around">
+      <button class="btn btn-ghost" type="button" on:click={scrollToTop}>Plan</button>
+      <button class="btn btn-circle btn-primary" type="button" on:click={handleAddActivityClick}>
+        +
+      </button>
+      <button class="btn btn-ghost" type="button" on:click={openCosts}>Costs</button>
+    </div>
+  </div>
 </div>
+
+<style>
+  :global(.people-carousel-root .people-carousel) {
+    scroll-snap-type: x mandatory;
+  }
+  :global(.people-carousel-root .people-snap) {
+    scroll-snap-align: center;
+  }
+</style>
