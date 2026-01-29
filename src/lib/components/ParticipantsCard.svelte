@@ -7,10 +7,10 @@
   export let manageTargetId: string | null = null;
 </script>
 
-<div class="card bg-base-100 border border-base-200 shadow-sm">
+<div class="card plan-glass shadow-sm">
   <div class="card-body gap-4">
     <div class="flex items-center justify-between">
-      <h3 class="text-lg font-semibold">Participants ({participants.length})</h3>
+      <h3 class="text-lg font-semibold text-primary">Participants ({participants.length})</h3>
       <div class="flex items-center gap-2">
         {#if showManage}
           {#if manageTargetId}

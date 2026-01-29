@@ -30,11 +30,14 @@
   };
 </script>
 
-<div class="card bg-base-100 border border-base-200 shadow-sm">
+<div class="card plan-glass shadow-sm">
   <div class="card-body gap-4">
     <div class="flex items-center justify-between">
-      <h3 class="text-lg font-semibold">Group Chat</h3>
-      <span class="text-xs text-success">
+      <div class="flex items-center gap-2 text-primary">
+        <span class="material-symbols-outlined text-lg">forum</span>
+        <h3 class="text-sm font-semibold uppercase tracking-widest">Group Chat</h3>
+      </div>
+      <span class="text-xs text-primary/70">
         {activeUsers !== null ? `${activeUsers} online` : 'Online'}
       </span>
     </div>
@@ -68,7 +71,9 @@
           }
         }}
       />
-      <button class="btn btn-primary btn-square" type="button" on:click={handleSend}>-></button>
+      <button class="btn btn-primary btn-square" type="button" on:click={handleSend} aria-label="Send message">
+        <span class="material-symbols-outlined text-xl">send</span>
+      </button>
     </div>
   </div>
 </div>

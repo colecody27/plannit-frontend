@@ -20,7 +20,7 @@
     const setActive = (index: number) => {
       dots.forEach((dot, i) => {
         dot.classList.toggle('bg-primary', i === index);
-        dot.classList.toggle('bg-base-300', i !== index);
+        dot.classList.toggle('bg-secondary/60', i !== index);
       });
     };
 
@@ -51,42 +51,62 @@
   });
 </script>
 
-<div class="card bg-base-100 border border-base-200 shadow-sm stats-carousel-root">
-  <div class="card-body py-4">
-    <div class="carousel w-full lg:grid lg:grid-cols-4 lg:gap-3">
-      <div id="stat-1" class="carousel-item w-full lg:w-auto justify-center carousel-snap">
-        <div class="w-full lg:text-left text-center pb-0.5">
-          <p class="text-xs uppercase tracking-wide text-base-content/50">Total Cost</p>
-          <p class="text-2xl font-semibold">${budget.toLocaleString()}</p>
-        </div>
-      </div>
-      <div id="stat-2" class="carousel-item w-full lg:w-auto justify-center carousel-snap">
-        <div class="w-full lg:text-left text-center pb-0.5">
-          <p class="text-xs uppercase tracking-wide text-base-content/50">Your total</p>
-          <p class="text-2xl font-semibold">${perPerson.toLocaleString()}</p>
-        </div>
-      </div>
-      <div id="stat-3" class="carousel-item w-full lg:w-auto justify-center carousel-snap">
-        <div class="w-full lg:text-left text-center pb-0.5">
-          <p class="text-xs uppercase tracking-wide text-base-content/50">Collected</p>
-          <p class="text-2xl font-semibold text-primary">${collected.toLocaleString()}</p>
-          <progress class="progress progress-primary" value={progressValue} max="100"></progress>
-        </div>
-      </div>
-      <div id="stat-4" class="carousel-item w-full lg:w-auto justify-center carousel-snap">
-        <div class="w-full lg:text-left text-center pb-0.5">
-          <p class="text-xs uppercase tracking-wide text-base-content/50">Countdown</p>
-          <p class="text-2xl font-semibold">{countdown}</p>
-          <p class="text-xs text-base-content/60">Until trip starts</p>
+<div class="stats-carousel-root space-y-2">
+  <div class="carousel w-full lg:grid lg:grid-cols-4 lg:gap-4">
+    <div id="stat-1" class="carousel-item w-full lg:w-auto justify-center carousel-snap">
+      <div class="card plan-glass stat-card w-full max-w-sm">
+        <div class="card-body gap-3">
+          <div class="flex items-center gap-2 text-primary">
+            <span class="material-symbols-outlined text-xl">payments</span>
+            <p class="text-xs font-semibold uppercase tracking-widest text-primary">Total Cost</p>
+          </div>
+          <p class="text-2xl font-black">${budget.toLocaleString()}</p>
         </div>
       </div>
     </div>
-    <div class="flex justify-center gap-2 pt-1 lg:hidden">
-      <button class="h-2 w-2 rounded-full bg-base-300" type="button" data-target="stat-1"></button>
-      <button class="h-2 w-2 rounded-full bg-base-300" type="button" data-target="stat-2"></button>
-      <button class="h-2 w-2 rounded-full bg-base-300" type="button" data-target="stat-3"></button>
-      <button class="h-2 w-2 rounded-full bg-base-300" type="button" data-target="stat-4"></button>
+    <div id="stat-2" class="carousel-item w-full lg:w-auto justify-center carousel-snap">
+      <div class="card plan-glass stat-card w-full max-w-sm">
+        <div class="card-body gap-3">
+          <div class="flex items-center gap-2 text-primary">
+            <span class="material-symbols-outlined text-xl">savings</span>
+            <p class="text-xs font-semibold uppercase tracking-widest text-primary">Collected</p>
+          </div>
+          <div class="flex items-end gap-2">
+            <p class="text-2xl font-black text-primary">${collected.toLocaleString()}</p>
+            <p class="text-sm font-bold text-base-content/50 mb-0.5">/ ${budget.toLocaleString()}</p>
+          </div>
+          <progress class="progress progress-primary h-1.5" value={progressValue} max="100"></progress>
+        </div>
+      </div>
     </div>
+    <div id="stat-3" class="carousel-item w-full lg:w-auto justify-center carousel-snap">
+      <div class="card plan-glass stat-card w-full max-w-sm">
+        <div class="card-body gap-3">
+          <div class="flex items-center gap-2 text-primary">
+            <span class="material-symbols-outlined text-xl">group</span>
+            <p class="text-xs font-semibold uppercase tracking-widest text-primary">Cost/Person</p>
+          </div>
+          <p class="text-2xl font-black">${perPerson.toLocaleString()}</p>
+        </div>
+      </div>
+    </div>
+    <div id="stat-4" class="carousel-item w-full lg:w-auto justify-center carousel-snap">
+      <div class="card plan-glass stat-card w-full max-w-sm">
+        <div class="card-body gap-3">
+          <div class="flex items-center gap-2 text-primary">
+            <span class="material-symbols-outlined text-xl">schedule</span>
+            <p class="text-xs font-semibold uppercase tracking-widest text-primary">Countdown</p>
+          </div>
+          <p class="text-2xl font-black">{countdown}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="flex justify-center gap-2 pt-1 lg:hidden">
+    <button class="h-2 w-2 rounded-full bg-secondary/60" type="button" data-target="stat-1"></button>
+    <button class="h-2 w-2 rounded-full bg-secondary/60" type="button" data-target="stat-2"></button>
+    <button class="h-2 w-2 rounded-full bg-secondary/60" type="button" data-target="stat-3"></button>
+    <button class="h-2 w-2 rounded-full bg-secondary/60" type="button" data-target="stat-4"></button>
   </div>
 </div>
 

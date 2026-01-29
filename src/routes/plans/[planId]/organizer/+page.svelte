@@ -423,7 +423,7 @@
     const setActive = (index: number) => {
       dots.forEach((dot, i) => {
         dot.classList.toggle('bg-primary', i === index);
-        dot.classList.toggle('bg-base-300', i !== index);
+        dot.classList.toggle('bg-secondary/60', i !== index);
       });
     };
 
@@ -687,14 +687,20 @@
             </label>
           </div>
         {/if}
-        <div class="card bg-primary/10 border border-primary/20 shadow-sm">
+        <div class="card plan-glass shadow-sm">
           <div class="card-body">
-            <div class="overflow-hidden rounded-2xl border border-base-200">
+            <div class="group relative overflow-hidden rounded-2xl border border-base-200">
               <img
-                class="h-48 w-full object-cover"
+                class="h-48 w-full object-cover transition-transform duration-700 group-hover:scale-105"
                 src={props.data.plan.coverImage}
                 alt="Plan cover"
               />
+              <div class="cover-overlay absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                <button class="btn btn-sm cover-change-btn shadow-lg" type="button">
+                  <span class="material-symbols-outlined text-lg">add_a_photo</span>
+                  Change cover
+                </button>
+              </div>
             </div>
             <div class="mt-4 flex items-center gap-3">
               <Avatar
@@ -709,13 +715,16 @@
                 <p class="font-semibold">{hostName}</p>
               </div>
             </div>
-            <h3 class="text-lg font-semibold mt-4">Plan description</h3>
+            <div class="mt-4 flex items-center gap-2 text-primary">
+              <span class="material-symbols-outlined text-xl">description</span>
+              <h3 class="text-sm font-semibold uppercase tracking-widest">Plan description</h3>
+            </div>
             {#if isEditing}
               <textarea class="textarea textarea-bordered h-28" bind:value={planDescription}></textarea>
             {:else}
-              <p class="text-sm text-base-content/70">
-                {detailsExpanded ? planDescription : descriptionShort}
-              </p>
+                <p class="text-sm description-text">
+                  {detailsExpanded ? planDescription : descriptionShort}
+                </p>
               {#if descriptionTooLong}
                 <button
                   class="btn btn-xs btn-ghost text-primary mt-2"
@@ -727,20 +736,9 @@
               {/if}
             {/if}
             <div class="mt-5 grid gap-4 md:grid-cols-2">
-              <div class="rounded-2xl border border-base-200 bg-base-100 p-4">
-                <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-base-content/50">
-                  <svg
-                    class="h-4 w-4 text-base-content/50"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fill-rule="evenodd"
-                      d="M6 2a1 1 0 0 1 1 1v1h6V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 1-1Zm10 7H4v6a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9Z"
-                      clip-rule="evenodd"
-                    />
-                  </svg>
+              <div class="rounded-2xl border border-base-200 p-4 plan-glass">
+                <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-primary">
+                  <span class="material-symbols-outlined text-base">calendar_month</span>
                   <span>When</span>
                 </div>
                 {#if isEditing}
@@ -781,23 +779,12 @@
                     </div>
                   </div>
                 {:else}
-                  <p class="mt-2 text-sm font-semibold text-base-content">{formatTimeline()}</p>
+                  <p class="mt-2 text-2xl font-black text-base-content">{formatTimeline()}</p>
                 {/if}
               </div>
-              <div class="rounded-2xl border border-base-200 bg-base-100 p-4">
-                <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-base-content/50">
-                  <svg
-                    class="h-4 w-4 text-base-content/50"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fill-rule="evenodd"
-                      d="M9.69 18.933a1 1 0 0 1-1.38 0C5.425 16.31 3 13.469 3 10.5A7 7 0 1 1 17 10.5c0 2.969-2.425 5.81-5.31 8.433ZM10 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
-                      clip-rule="evenodd"
-                    />
-                  </svg>
+              <div class="rounded-2xl border border-base-200 p-4 plan-glass">
+                <div class="flex items-center gap-2 text-xs uppercase tracking-wide text-primary">
+                  <span class="material-symbols-outlined text-base">location_on</span>
                   <span>Where</span>
                 </div>
                 {#if isEditing}
@@ -813,7 +800,7 @@
                     />
                   </div>
                 {:else}
-                  <p class="mt-2 text-sm font-semibold text-base-content">{planLocation}</p>
+                  <p class="mt-2 text-2xl font-black text-base-content">{planLocation}</p>
                 {/if}
               </div>
             </div>
@@ -836,19 +823,19 @@
           />
         </div>
 
-        <div class="card bg-base-100 border border-base-200 shadow-sm lg:hidden people-carousel-root">
+        <div class="card plan-glass shadow-sm lg:hidden people-carousel-root">
           <div class="card-body gap-4">
             <div class="flex flex-wrap items-center justify-between gap-2">
-              <h3 class="text-lg font-semibold">People ({participantsWithHost.length})</h3>
+              <h3 class="text-lg font-semibold text-primary">People ({participantsWithHost.length})</h3>
               <div class="flex items-center gap-2">
-                <label class="btn btn-xs btn-ghost text-primary" for="invite-modal">Invite friends</label>
+                <label class="btn btn-xs btn-primary" for="invite-modal">Invite friends</label>
                 <label class="btn btn-xs btn-ghost text-primary" for="manage-participants-modal">Manage</label>
               </div>
             </div>
             <div class="carousel w-full people-carousel">
               {#each participantsWithHost as person, index}
                 <div id={`participant-${index}`} class="carousel-item w-full justify-center people-snap">
-                  <div class="flex w-full max-w-sm mx-auto items-center gap-3 rounded-2xl border border-base-200 bg-base-100 px-3 py-2">
+                  <div class="flex w-full max-w-sm mx-auto items-center gap-3 rounded-2xl border border-base-200 px-3 py-2 plan-glass">
                     <Avatar
                       initials={person.name.slice(0, 1)}
                       status="online"
@@ -869,7 +856,7 @@
             <div class="flex justify-center gap-2 pt-1">
               {#each participantsWithHost as _, index}
                 <button
-                  class="h-2 w-2 rounded-full bg-base-300"
+                  class="h-2 w-2 rounded-full bg-secondary/60"
                   type="button"
                   data-target={`participant-${index}`}
                 ></button>

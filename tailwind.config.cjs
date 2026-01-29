@@ -3,8 +3,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        display: ['"Sora"', 'sans-serif'],
-        body: ['"Manrope"', 'sans-serif']
+        display: ['"Plus Jakarta Sans"', 'sans-serif'],
+        body: ['"Plus Jakarta Sans"', 'sans-serif']
       },
       boxShadow: {
         lift: '0 20px 40px -30px rgba(23, 60, 45, 0.55)',
@@ -19,17 +19,17 @@ module.exports = {
     themes: [
       {
         plannit: {
-          primary: '#17E68E',
-          'primary-content': '#043822',
+          primary: '#059669',
+          'primary-content': '#FFFFFF',
           secondary: '#9BE7FF',
           accent: '#FFD48A',
-          neutral: '#1B2A26',
-          'base-100': '#DDE9E1',
-          'base-200': '#D0E1D6',
-          'base-300': '#BDD3C6',
-          'base-content': '#1F2E26',
+          neutral: '#1F2937',
+          'base-100': '#FFFFFF',
+          'base-200': '#F8FAFC',
+          'base-300': '#EEF2F7',
+          'base-content': '#1F2937',
           info: '#4D9DE0',
-          success: '#23C16B',
+          success: '#059669',
           warning: '#FFB020',
           error: '#E35B5B'
         }

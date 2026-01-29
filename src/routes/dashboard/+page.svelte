@@ -204,7 +204,7 @@
         <PlanCard
           {plan}
           ctaHref={isHost ? `/plans/${plan.id}/organizer` : `/plans/${plan.id}/participant`}
-          ctaLabel={isHost ? 'Manage ->' : 'View ->'}
+          ctaLabel={isHost ? 'Manage' : 'View'}
         />
       {/each}
       <div class="card border-2 border-dashed border-base-200 bg-base-100/60 text-center min-h-[360px]">

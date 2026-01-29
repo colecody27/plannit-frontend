@@ -6,7 +6,7 @@
 
   export let plan: Plan;
   export let ctaHref: string | null = null;
-  export let ctaLabel = 'Manage ->';
+  export let ctaLabel = 'Manage';
 
   $: progressValue = plan.goal > 0 ? (plan.raised / plan.goal) * 100 : 0;
   $: displayLocation =
@@ -136,7 +136,8 @@
         href={ctaHref ?? `/plans/${plan.id}/organizer`}
         on:click|stopPropagation
       >
-        {ctaLabel}
+        <span>{ctaLabel}</span>
+        <span class="material-symbols-outlined text-sm">arrow_forward</span>
       </a>
       </div>
     </div>

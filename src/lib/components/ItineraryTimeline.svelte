@@ -457,17 +457,14 @@
   );
 </script>
 
-<div class="card bg-base-100 border border-base-200 shadow-sm">
+<div class="card plan-glass shadow-sm">
   <div class="card-body space-y-5">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
         <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path d="M6 2a1 1 0 0 1 1 1v1h6V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v1H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 1-1Z" />
-            <path d="M2 9h16v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9Z" />
-          </svg>
+          <span class="material-symbols-outlined text-xl">map</span>
         </span>
-        <h3 class="text-lg font-semibold">Plan Timeline</h3>
+        <h3 class="text-lg font-semibold text-primary">Plan Timeline</h3>
       </div>
       {#if props.addTargetId && canAddActivities}
         <label
@@ -485,7 +482,7 @@
 
     <div class="max-h-[520px] space-y-5 overflow-y-auto pr-2">
       {#if groupedActivities.length === 0}
-        <div class="card border-2 border-dashed border-base-200 bg-base-100/60 text-center">
+        <div class="card plan-glass border-2 border-dashed border-base-200 text-center">
           <div class="card-body items-center justify-center gap-2">
             <div class="h-12 w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl">+</div>
             <h3 class="font-semibold">No activities yet</h3>
@@ -743,14 +740,20 @@
 
 <input id="activity-detail-modal" type="checkbox" class="modal-toggle" bind:checked={activityModalOpen} />
 <div class="modal" role="dialog" class:modal-open={activityModalOpen}>
-  <div class="modal-box max-w-2xl p-0 overflow-hidden">
-    <div class="relative">
+  <div class="modal-box max-w-2xl p-0 overflow-hidden plan-glass modal-opaque border border-base-200 bg-base-100">
+    <div class="group relative">
       <img
-        class="h-56 w-full object-cover"
+        class="h-56 w-full object-cover transition-transform duration-700 group-hover:scale-105"
         src={selectedActivity?.image ??
           'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80'}
         alt={selectedActivity?.title ?? 'Activity image'}
       />
+      <div class="cover-overlay absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+        <button class="btn btn-sm cover-change-btn shadow-lg" type="button">
+          <span class="material-symbols-outlined text-lg">add_a_photo</span>
+          Change photo
+        </button>
+      </div>
       <button
         class="btn btn-ghost btn-sm absolute right-4 top-4 rounded-full bg-base-100/80"
         on:click={closeActivityModal}
@@ -768,7 +771,7 @@
               <input class="input input-bordered w-full" bind:value={activityTitle} />
             </label>
           {:else}
-            <h3 class="text-2xl font-semibold">{selectedActivity?.title ?? 'Activity'}</h3>
+            <h3 class="text-2xl font-black">{selectedActivity?.title ?? 'Activity'}</h3>
           {/if}
         </div>
         {#if editActivity}
@@ -812,13 +815,7 @@
       {/if}
       <div class="grid gap-4 text-sm text-base-content/70 md:grid-cols-2">
         <div class="flex items-start gap-2">
-          <svg class="mt-0.5 h-4 w-4 text-base-content/50" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path
-              fill-rule="evenodd"
-              d="M6 2a1 1 0 0 1 1 1v1h6V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 1-1Zm10 7H4v6a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9Z"
-              clip-rule="evenodd"
-            />
-          </svg>
+          <span class="material-symbols-outlined mt-0.5 text-lg text-primary">calendar_month</span>
           <div>
             {#if editActivity}
               <div class="space-y-3">
@@ -845,34 +842,28 @@
               </div>
             {:else if modalTime.isRange && modalTime.end}
               <div class="space-y-3 text-base-content">
-                <p class="font-semibold text-base-content">When</p>
+                <p class="font-black text-primary uppercase tracking-widest text-xs">When</p>
                 <div>
                   <p class="text-xs font-semibold text-base-content/60">Starts</p>
-                  <p class="font-semibold">{modalTime.start}</p>
+                  <p class="font-black">{modalTime.start}</p>
                 </div>
                 <div>
                   <p class="text-xs font-semibold text-base-content/60">Ends</p>
-                  <p class="font-semibold">{modalTime.end}</p>
+                  <p class="font-black">{modalTime.end}</p>
                 </div>
               </div>
             {:else}
               <div>
-                <p class="font-semibold text-base-content">When</p>
-                <p class="font-semibold text-base-content">{modalTime.start}</p>
+                <p class="font-black text-primary uppercase tracking-widest text-xs">When</p>
+                <p class="font-black text-base-content">{modalTime.start}</p>
               </div>
             {/if}
           </div>
         </div>
         <div class="grid grid-cols-[1rem,1fr] items-start gap-x-2 gap-y-4">
-          <svg class="mt-0.5 h-4 w-4 text-base-content/50" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path
-              fill-rule="evenodd"
-              d="M9.69 18.933a1 1 0 0 1-1.38 0C5.425 16.31 3 13.469 3 10.5A7 7 0 1 1 17 10.5c0 2.969-2.425 5.81-5.31 8.433ZM10 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
-              clip-rule="evenodd"
-            />
-          </svg>
+          <span class="material-symbols-outlined mt-0.5 text-lg text-primary">location_on</span>
           <div>
-            <p class="font-semibold text-base-content">Where</p>
+            <p class="font-black text-primary uppercase tracking-widest text-xs">Where</p>
             {#if editActivity}
               <LocationAutocomplete
                 label="Location"
@@ -884,12 +875,9 @@
               <p class="text-xs text-base-content/60">{selectedActivity?.location ?? 'Location TBD'}</p>
             {/if}
           </div>
-          <svg class="mt-0.5 h-4 w-4 text-base-content/50" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path d="M12.586 4.586a2 2 0 0 1 2.828 2.828l-4.5 4.5a2 2 0 0 1-2.828 0 1 1 0 1 1 1.414-1.414 0 0 0 0 0 1 1 0 0 0 1.414 0l4.5-4.5a1 1 0 1 0-1.414-1.414l-1.5 1.5a1 1 0 0 1-1.414-1.414l1.5-1.5Z" />
-            <path d="M7.414 15.414a2 2 0 0 1-2.828-2.828l4.5-4.5a2 2 0 0 1 2.828 0 1 1 0 1 1-1.414 1.414 0 0 0 0 0 1 1 0 0 0-1.414 0l-4.5 4.5a1 1 0 1 0 1.414 1.414l1.5-1.5a1 1 0 1 1 1.414 1.414l-1.5 1.5Z" />
-          </svg>
+          <span class="material-symbols-outlined mt-0.5 text-lg text-primary">link</span>
           <div>
-            <p class="font-semibold text-base-content">Link</p>
+            <p class="font-black text-primary uppercase tracking-widest text-xs">Link</p>
             {#if editActivity}
                 <input
                   class="input input-bordered mt-2 w-full font-semibold"
@@ -898,7 +886,7 @@
                 />
             {:else if selectedActivity?.link}
               <a
-                class="mt-2 inline-flex items-center gap-2 text-sm text-primary"
+                class="mt-2 inline-flex items-center gap-2 text-sm text-primary font-semibold"
                 href={selectedActivity.link}
                 target="_blank"
                 rel="noreferrer"
@@ -912,11 +900,11 @@
         </div>
       </div>
       <div class="md:col-span-2">
-        <p class="font-semibold text-base-content">Activity details</p>
+        <p class="font-black text-primary uppercase tracking-widest text-xs">Activity details</p>
         {#if editActivity}
           <textarea class="textarea textarea-bordered h-24 mt-2 w-full" bind:value={activityDescription}></textarea>
         {:else}
-          <p class="text-sm text-base-content/70 mt-2">
+          <p class="text-sm description-text mt-2">
             {selectedActivity?.description ?? 'Details will appear here once added.'}
           </p>
         {/if}
@@ -924,9 +912,9 @@
     </div>
     <div class="border-t border-base-200 p-5 space-y-4">
       {#if !isRejected}
-        <div class="rounded-2xl bg-base-200/40 px-4 py-3 space-y-3">
+        <div class="rounded-2xl plan-glass px-4 py-3 space-y-3">
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="text-sm text-base-content/70">
+            <div class="text-sm text-base-content/70 font-semibold">
               Who’s in ({selectedActivity?.votes?.length ?? 0})
             </div>
             {#if selectedActivity?.isProposed && selectedActivity?.status?.toLowerCase() !== 'confirmed'}
