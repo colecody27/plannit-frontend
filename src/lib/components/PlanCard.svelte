@@ -31,7 +31,7 @@
 </script>
 
 <div
-  class="card bg-base-100 border border-base-200 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md overflow-hidden cursor-pointer"
+  class="card plan-glass border border-base-200 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md overflow-hidden cursor-pointer"
   role="link"
   tabindex="0"
   on:click={() => goto(ctaHref ?? `/plans/${plan.id}/organizer`)}

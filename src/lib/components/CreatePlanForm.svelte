@@ -27,6 +27,36 @@
   let dateError = '';
   let isSubmitting = false;
   export let showBuyIn = false;
+  let coverFilter = 'all';
+  let uploadedCoverUrl: string | null = null;
+  const coverGallery = [
+    { id: 'c1', category: 'all', url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1200&q=80' },
+    { id: 'c2', category: 'nature', url: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80' },
+    { id: 'c3', category: 'party', url: 'https://images.unsplash.com/photo-1464375117522-1311d6a5b81f?auto=format&fit=crop&w=1200&q=80' },
+    { id: 'c4', category: 'city', url: 'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=1200&q=80' },
+    { id: 'c5', category: 'minimal', url: 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1200&q=80' },
+    { id: 'c6', category: 'nature', url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=80' },
+    { id: 'c7', category: 'party', url: 'https://images.unsplash.com/photo-1461783436728-0a921771469e?auto=format&fit=crop&w=1200&q=80' },
+    { id: 'c8', category: 'city', url: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80' },
+    { id: 'c9', category: 'minimal', url: 'https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=1200&q=80' }
+  ];
+  let selectedCover = coverGallery[0]?.url ?? '';
+  $: filteredCovers = coverFilter === 'all'
+    ? coverGallery
+    : coverGallery.filter((cover) => cover.category === coverFilter);
+
+  const handleCoverUpload = (event: Event) => {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0];
+    if (!file) {
+      return;
+    }
+    if (uploadedCoverUrl) {
+      URL.revokeObjectURL(uploadedCoverUrl);
+    }
+    uploadedCoverUrl = URL.createObjectURL(file);
+    selectedCover = uploadedCoverUrl;
+  };
 
   onMount(async () => {
     await import('cally');
@@ -43,6 +73,9 @@
     window.addEventListener('click', handleClickOutside);
     onDestroy(() => {
       window.removeEventListener('click', handleClickOutside);
+      if (uploadedCoverUrl) {
+        URL.revokeObjectURL(uploadedCoverUrl);
+      }
     });
   });
 
@@ -203,14 +236,60 @@
           bind:value={planName}
         />
       </label>
-      <div>
-        <span class="label-text">Cover Image</span>
-        <div class="mt-2 rounded-2xl border border-base-200 overflow-hidden">
-          <img
-            class="h-44 w-full object-cover"
-            src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1200&q=80"
-            alt="Cover"
-          />
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="label-text">Cover Image</span>
+        </div>
+        <div class="grid gap-4 lg:grid-cols-[1.1fr,1.4fr]">
+          <div class="space-y-3">
+            <div class="rounded-2xl border border-base-200 overflow-hidden plan-glass">
+              <img
+                class="h-44 w-full object-cover"
+                src={selectedCover}
+                alt="Selected cover"
+              />
+            </div>
+            <label class="rounded-2xl border-2 border-dashed border-primary/40 bg-base-100/60 p-4 flex flex-col items-center justify-center gap-2 text-center cursor-pointer plan-glass">
+              <span class="material-symbols-outlined text-2xl text-primary">cloud_upload</span>
+              <div class="text-sm font-semibold">Upload custom image</div>
+              <div class="text-xs text-base-content/60">JPG, PNG, WebP up to 10MB</div>
+              <input class="hidden" type="file" accept="image/*" on:change={handleCoverUpload} />
+            </label>
+          </div>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-widest text-base-content/60">Browse gallery</span>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              {#each ['all', 'nature', 'party', 'city', 'minimal'] as filter}
+                <button
+                  class={`btn btn-xs ${coverFilter === filter ? 'btn-primary' : 'btn-outline'}`}
+                  type="button"
+                  on:click={() => (coverFilter = filter)}
+                >
+                  {filter === 'all' ? 'All' : filter[0].toUpperCase() + filter.slice(1)}
+                </button>
+              {/each}
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+              {#each filteredCovers as cover}
+                <button
+                  class={`relative overflow-hidden rounded-2xl border ${
+                    selectedCover === cover.url ? 'border-primary ring-2 ring-primary/40' : 'border-base-200'
+                  }`}
+                  type="button"
+                  on:click={() => (selectedCover = cover.url)}
+                >
+                  <img class="h-20 w-full object-cover" src={cover.url} alt="Gallery cover" />
+                  {#if selectedCover === cover.url}
+                    <span class="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-content">
+                      <span class="material-symbols-outlined text-xs">check</span>
+                    </span>
+                  {/if}
+                </button>
+              {/each}
+            </div>
+          </div>
         </div>
       </div>
       <label class="form-control">
@@ -337,7 +416,12 @@
     <div class="flex items-center justify-between">
       <button class="btn btn-outline">Back</button>
       <button class="btn btn-primary" type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Creating...' : 'Create Plan ->'}
+        {#if isSubmitting}
+          Creating...
+        {:else}
+          <span>Create Plan</span>
+          <span class="material-symbols-outlined text-sm">arrow_forward</span>
+        {/if}
       </button>
     </div>
   </form>
